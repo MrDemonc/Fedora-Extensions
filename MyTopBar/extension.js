@@ -1173,6 +1173,7 @@ export default class WaveTopBarExtension extends Extension {
                             style_class: 'wave-wifi-pass-box',
                             y_align: Clutter.ActorAlign.CENTER,
                             x_expand: true,
+                            style: 'spacing: 6px;',
                         });
                         const lockIcon = new St.Icon({
                             icon_name: 'channel-secure-symbolic',
@@ -1181,19 +1182,42 @@ export default class WaveTopBarExtension extends Extension {
                         });
                         passBox.add_child(lockIcon);
 
+                        let isRevealed = false;
+                        const maskedText = '•'.repeat(Math.max(8, password.length));
                         const passLabel = new St.Label({
-                            text: password,
+                            text: maskedText,
                             style_class: 'wave-wifi-pass-label',
                             x_expand: true,
                             y_align: Clutter.ActorAlign.CENTER,
                         });
                         passBox.add_child(passLabel);
 
+                        // Eye button to reveal / hide password
+                        const eyeBtn = new St.Button({
+                            style_class: 'wave-wifi-icon-btn',
+                            can_focus: true,
+                            track_hover: true,
+                            y_align: Clutter.ActorAlign.CENTER,
+                        });
+                        const eyeIcon = new St.Icon({
+                            icon_name: 'view-reveal-symbolic',
+                            icon_size: 13,
+                            style_class: 'wave-topbar-icon',
+                        });
+                        eyeBtn.set_child(eyeIcon);
+                        eyeBtn.connect('clicked', () => {
+                            isRevealed = !isRevealed;
+                            passLabel.text = isRevealed ? password : maskedText;
+                            eyeIcon.icon_name = isRevealed ? 'view-conceal-symbolic' : 'view-reveal-symbolic';
+                        });
+                        passBox.add_child(eyeBtn);
+
                         const copyBtn = new St.Button({
                             label: _('Copiar'),
                             style_class: 'wave-wifi-btn-compact',
                             can_focus: true,
                             track_hover: true,
+                            y_align: Clutter.ActorAlign.CENTER,
                         });
                         copyBtn.connect('clicked', () => {
                             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, password);

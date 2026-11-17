@@ -572,12 +572,25 @@
 .wave-popup-menu-content.theme-light .popup-separator-menu-item,
 .wave-wifi-menu.theme-light .popup-separator-menu-item,
 .wave-wifi-menu-content.theme-light .popup-separator-menu-item,
+.wave-popup-menu.theme-light .popup-separator-menu-item:insensitive,
+.wave-popup-menu-content.theme-light .popup-separator-menu-item:insensitive,
+.wave-wifi-menu.theme-light .popup-separator-menu-item:insensitive,
+.wave-wifi-menu-content.theme-light .popup-separator-menu-item:insensitive {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 2px 0 !important;
+    margin: 2px 8px !important;
+}
+
 .wave-popup-menu.theme-light .popup-separator-menu-item-separator,
 .wave-popup-menu-content.theme-light .popup-separator-menu-item-separator,
 .wave-wifi-menu.theme-light .popup-separator-menu-item-separator,
 .wave-wifi-menu-content.theme-light .popup-separator-menu-item-separator {
-    background-color: rgba(0, 0, 0, 0.12) !important;
-    border-color: rgba(0, 0, 0, 0.12) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    border: none !important;
+    box-shadow: none !important;
     height: 1px !important;
 }
 
@@ -736,12 +749,25 @@
 .wave-popup-menu-content.theme-dark .popup-separator-menu-item,
 .wave-wifi-menu.theme-dark .popup-separator-menu-item,
 .wave-wifi-menu-content.theme-dark .popup-separator-menu-item,
+.wave-popup-menu.theme-dark .popup-separator-menu-item:insensitive,
+.wave-popup-menu-content.theme-dark .popup-separator-menu-item:insensitive,
+.wave-wifi-menu.theme-dark .popup-separator-menu-item:insensitive,
+.wave-wifi-menu-content.theme-dark .popup-separator-menu-item:insensitive {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 2px 0 !important;
+    margin: 2px 8px !important;
+}
+
 .wave-popup-menu.theme-dark .popup-separator-menu-item-separator,
 .wave-popup-menu-content.theme-dark .popup-separator-menu-item-separator,
 .wave-wifi-menu.theme-dark .popup-separator-menu-item-separator,
 .wave-wifi-menu-content.theme-dark .popup-separator-menu-item-separator {
-    background-color: rgba(255, 255, 255, 0.12) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    border: none !important;
+    box-shadow: none !important;
     height: 1px !important;
 }
 
