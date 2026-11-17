@@ -1,0 +1,17 @@
+# Compiled schemas (generated during install)
+schemas/gschemas.compiled
+*/schemas/gschemas.compiled
+
+# Package archives
+*.zip
+*.tar.gz
+
+# System and editor files
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="mac-wave-dock">
+  <schema id="org.gnome.shell.extensions.mac-wave-dock" path="/org/gnome/shell/extensions/mac-wave-dock/">
+    <key name="icon-size" type="i">
+      <default>40</default>
+      <summary>Base Icon Size</summary>
+      <description>Base size in pixels for dock icons (compact macOS style).</description>
+    </key>
+    <key name="magnification-scale" type="d">
+      <default>1.45</default>
+      <summary>Wave Magnification Scale</summary>
+      <description>Maximum zoom factor when hovering over an icon (1.1 to 2.0).</description>
+    </key>
+    <key name="wave-radius" type="i">
+      <default>130</default>
+      <summary>Wave Effect Radius</summary>
+      <description>Distance in pixels around cursor for the wave effect to spread.</description>
+    </key>
+    <key name="hide-overview-dash" type="b">
+      <default>true</default>
+      <summary>Replace GNOME Overview Dash</summary>
+      <description>Hide the native GNOME dash in overview so this dock takes its place.</description>
+    </key>
+    <key name="autohide-in-fullscreen" type="b">
+      <default>true</default>
+      <summary>Auto-hide on Fullscreen or Maximized</summary>
+      <description>Automatically hide the dock when a fullscreen or maximized window is active and reveal it when hovering over the dock area.</description>
+    </key>
+    <key name="show-trash" type="b">
+      <default>true</default>
+      <summary>Show Trash Can</summary>
+      <description>Display the Trash bin icon at the end of the dock.</description>
+    </key>
+    <key name="show-running" type="b">
+      <default>true</default>
+      <summary>Show Running Apps</summary>
+      <description>Show currently running applications in the dock even if not pinned.</description>
+    </key>
+    <key name="show-apps-drawer" type="b">
+      <default>true</default>
+      <summary>Show Applications Drawer</summary>
+      <description>Show the Applications grid launcher button in the dock.</description>
+    </key>
+    <key name="show-mounts" type="b">
+      <default>true</default>
+      <summary>Show Mounted Volumes</summary>
+      <description>Show mounted disks, USB drives and removable devices in the dock.</description>
+    </key>
+    <key name="dock-bottom-margin" type="i">
+      <default>8</default>
+      <summary>Dock Bottom Margin</summary>
+      <description>Distance in pixels from the bottom edge of the screen.</description>
+    </key>
+    <key name="dock-padding" type="i">
+      <default>6</default>
+      <summary>Dock Inner Padding</summary>
+      <description>Padding in pixels between icons and dock edges.</description>
+    </key>
+    <key name="dock-border-radius" type="i">
+      <default>20</default>
+      <summary>Dock Border Radius</summary>
+      <description>Corner curvature radius in pixels for the dock background.</description>
+    </key>
+    <key name="dock-blur" type="b">
+      <default>false</default>
+      <summary>Enable Dock Blur</summary>
+      <description>Apply background blur effect behind the dock container.</description>
+    </key>
+    <key name="dock-blur-radius" type="i">
+      <default>24</default>
+      <summary>Dock Blur Radius</summary>
+      <description>Radius for the background blur effect.</description>
+    </key>
+    <key name="dock-color" type="s">
+      <default>'auto'</default>
+      <summary>Dock Theme Color</summary>
+      <description>Color style: 'auto', 'dark', 'light', 'black', or 'custom'.</description>
+    </key>
+    <key name="dock-opacity" type="i">
+      <default>78</default>
+      <summary>Dock Background Opacity</summary>
+      <description>Opacity percentage (0 to 100) of the dock background.</description>
+    </key>
+    <key name="dock-border-opacity" type="i">
+      <default>20</default>
+      <summary>Dock Border Opacity</summary>
+      <description>Opacity percentage (0 to 100) of the dock border highlight.</description>
+    </key>
+    <key name="dock-custom-color" type="s">
+      <default>'#18181c'</default>
+      <summary>Custom Dock Color</summary>
+      <description>Hex color code when dock-color is custom.</description>
+    </key>
+  </schema>
+</schemalist>

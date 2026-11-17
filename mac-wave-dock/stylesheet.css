@@ -1,0 +1,102 @@
+/* Mac Wave Dock Stylesheet */
+
+/* The floating macOS-style dock container */
+.wave-dock-box {
+    background-color: rgba(24, 24, 28, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 20px;
+    padding: 6px 14px 6px 14px;
+    spacing: 8px;
+}
+
+/* Individual dock item button */
+.wave-dock-item {
+    margin: 0 2px;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
+.wave-dock-item:focus {
+    box-shadow: none;
+    background: none;
+}
+
+.wave-dock-item:hover {
+    box-shadow: none;
+    background: none;
+}
+
+.wave-dock-item-box {
+    spacing: 2px;
+}
+
+/* Running dot indicator - Dark & Default Modes */
+.wave-dock-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.75);
+    margin-top: 2px;
+}
+
+.wave-dock-dot-active {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: #5bc0be;
+    margin-top: 2px;
+}
+
+/* Running dot indicator - Light Mode (Contrast High Black) */
+.wave-dock-dot-light {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(0, 0, 0, 0.65);
+    margin-top: 2px;
+}
+
+.wave-dock-dot-light-active {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: #000000;
+    margin-top: 2px;
+}
+
+.wave-dock-dot-inactive {
+    width: 4px;
+    height: 4px;
+    background-color: transparent;
+    margin-top: 2px;
+}
+
+/* Vertical separator between apps, mounts, and trash */
+.wave-dock-separator {
+    width: 1px;
+    height: 28px;
+    background-color: rgba(255, 255, 255, 0.22);
+    margin: 4px 4px;
+}
+
+/* Separator in light mode */
+.wave-dock-separator-light {
+    width: 1px;
+    height: 28px;
+    background-color: rgba(0, 0, 0, 0.22);
+    margin: 4px 4px;
+}
+
+/* macOS Floating Tooltip */
+.wave-dock-tooltip {
+    background-color: rgba(26, 26, 30, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 0.85em;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}

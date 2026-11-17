@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="wave-topbar">
+  <schema id="org.gnome.shell.extensions.wave-topbar" path="/org/gnome/shell/extensions/wave-topbar/">
+    <key name="bar-height" type="i">
+      <default>26</default>
+      <summary>Bar Height</summary>
+      <description>Height of the top bar in pixels.</description>
+    </key>
+    <key name="floating-bar" type="b">
+      <default>false</default>
+      <summary>Floating Bar</summary>
+      <description>Make the top bar floating with rounded corners and margins.</description>
+    </key>
+    <key name="bar-blur" type="b">
+      <default>true</default>
+      <summary>Enable Background Blur</summary>
+      <description>Apply background blur effect to the top bar.</description>
+    </key>
+    <key name="bar-blur-radius" type="i">
+      <default>28</default>
+      <summary>Blur Radius</summary>
+      <description>Radius for the background blur effect.</description>
+    </key>
+    <key name="autohide-in-fullscreen-or-maximized" type="b">
+      <default>true</default>
+      <summary>Auto-hide with fullscreen or maximized windows</summary>
+      <description>Automatically hide the top bar when a window is maximized or fullscreen, revealing it on mouse hover at the top edge.</description>
+    </key>
+    <key name="show-system-menu" type="b">
+      <default>true</default>
+      <summary>Show System Menu</summary>
+      <description>Show Fedora logo button on the left with shutdown/settings options.</description>
+    </key>
+    <key name="show-active-app" type="b">
+      <default>true</default>
+      <summary>Show Active App</summary>
+      <description>Show the name of the active application.</description>
+    </key>
+    <key name="show-clock" type="b">
+      <default>true</default>
+      <summary>Show Clock and Date</summary>
+      <description>Show clock in the right corner with calendar integration.</description>
+    </key>
+    <key name="clock-format" type="s">
+      <default>'%a %d %b  %H:%M'</default>
+      <summary>Clock Format</summary>
+      <description>Strftime format for the top bar clock.</description>
+    </key>
+    <key name="show-spotlight" type="b">
+      <default>true</default>
+      <summary>Show Spotlight Search</summary>
+      <description>Show search icon to trigger file and app search.</description>
+    </key>
+    <key name="show-wifi" type="b">
+      <default>true</default>
+      <summary>Show Wi-Fi Indicator</summary>
+      <description>Show Wi-Fi status indicator and quick access.</description>
+    </key>
+    <key name="show-bluetooth" type="b">
+      <default>true</default>
+      <summary>Show Bluetooth Indicator</summary>
+      <description>Show Bluetooth status indicator and quick access.</description>
+    </key>
+    <key name="show-battery" type="b">
+      <default>true</default>
+      <summary>Show Battery with Percentage</summary>
+      <description>Show battery icon and percentage.</description>
+    </key>
+    <key name="show-control-center" type="b">
+      <default>true</default>
+      <summary>Show Control Center</summary>
+      <description>Show sliders icon to trigger GNOME Quick Settings.</description>
+    </key>
+    <key name="show-settings-btn" type="b">
+      <default>true</default>
+      <summary>Show Settings Button</summary>
+      <description>Show gear icon to open Wave Top Bar preferences.</description>
+    </key>
+    <key name="bar-opacity" type="i">
+      <default>65</default>
+      <summary>Bar Background Opacity</summary>
+      <description>Opacity percentage (0 to 100) of the top bar background.</description>
+    </key>
+    <key name="bar-color" type="s">
+      <default>'auto'</default>
+      <summary>Bar Theme Color</summary>
+      <description>Theme: 'auto', 'dark', 'light', 'black', or 'custom'.</description>
+    </key>
+    <key name="bar-custom-color" type="s">
+      <default>'#18181c'</default>
+      <summary>Custom Bar Color</summary>
+      <description>Hex color code when bar-color is custom.</description>
+    </key>
+  </schema>
+</schemalist>

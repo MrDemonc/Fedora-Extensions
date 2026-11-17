@@ -1,0 +1,17 @@
+{
+  "name": "Mac Wave Dock",
+  "description": "Dock al estilo de macOS compacto con animación de ola al pasar el ratón, soporte para minimizar y maximizar aplicaciones, reordenamiento, papelera y reemplazo del dash de GNOME.",
+  "uuid": "mac-wave-dock@demonc",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51"
+  ],
+  "settings-schema": "org.gnome.shell.extensions.mac-wave-dock",
+  "gettext-domain": "mac-wave-dock",
+  "version": 3
+}

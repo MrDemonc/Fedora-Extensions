@@ -1,0 +1,277 @@
+/* Wave Top Bar Stylesheet */
+
+#panelBox {
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+.wave-topbar {
+    background-color: transparent;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: "Cantarell", sans-serif;
+    border: none;
+    border-bottom: none;
+    outline: none;
+    box-shadow: none;
+    text-shadow: none !important;
+    transition: all 180ms ease-out;
+}
+
+.wave-topbar-bg {
+    outline: none;
+    transition: all 180ms ease;
+}
+
+.wave-topbar-floating .wave-topbar-bg {
+    margin: 4px 12px 0 12px;
+    border-radius: 10px;
+}
+
+/* Force all internal containers to be 100% transparent and borderless */
+.wave-topbar-left,
+.wave-topbar-center,
+.wave-topbar-right,
+.wave-topbar-content,
+.wave-topbar-status-box,
+.wave-topbar-app-box {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.wave-topbar-left {
+    padding-left: 12px;
+    padding-right: 6px;
+    spacing: 4px;
+}
+
+.wave-topbar-right {
+    padding-left: 6px;
+    padding-right: 14px;
+    spacing: 6px;
+}
+
+.wave-topbar-center {
+    spacing: 6px;
+}
+
+.wave-topbar-btn,
+.wave-topbar-btn:focus,
+.wave-topbar-btn:hover,
+.wave-topbar-btn:active,
+.wave-topbar-btn:checked {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border-radius: 0 !important;
+    opacity: 1.0 !important;
+    transition: none !important;
+}
+
+.wave-topbar-btn {
+    border-radius: 0;
+    padding: 0 5px;
+    margin: 0 1px;
+    color: inherit;
+    background: transparent !important;
+    background-color: transparent !important;
+    opacity: 1.0 !important;
+}
+
+.wave-topbar-btn:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    opacity: 1.0 !important;
+}
+
+.wave-topbar-btn:active,
+.wave-topbar-btn:checked {
+    background: transparent !important;
+    background-color: transparent !important;
+    opacity: 0.75 !important;
+}
+
+.wave-topbar-btn StIcon,
+.wave-topbar-btn StLabel {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.wave-topbar-logo {
+    padding: 0 5px;
+    margin-right: 2px;
+}
+
+.wave-topbar-app-box {
+    spacing: 4px;
+}
+
+.wave-topbar-app-name {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    color: inherit;
+    text-shadow: none !important;
+}
+
+.wave-topbar-clock-btn {
+    padding: 0 8px;
+    margin-left: 4px;
+    margin-right: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.15px;
+    color: inherit;
+    text-shadow: none !important;
+}
+
+.wave-topbar-pill-btn {
+    padding: 0 5px;
+    border-radius: 0 !important;
+    margin: 0 1px;
+    border: none !important;
+    background: transparent !important;
+}
+
+.wave-topbar-status-box {
+    spacing: 3px;
+}
+
+.wave-topbar-battery-drawing {
+    width: 23px;
+    height: 11px;
+    min-width: 23px;
+    min-height: 11px;
+    margin-right: 3px;
+}
+
+.wave-topbar-battery-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: inherit;
+    margin-left: 2px;
+    text-shadow: none !important;
+}
+
+.wave-topbar-icon {
+    icon-size: 12px;
+}
+
+.wave-topbar-small-icon {
+    icon-size: 11px;
+}
+
+/* Fix PopupMenu BoxPointer gap and eliminate arrow overlap into topbar */
+.wave-popup-menu,
+.wave-popup-menu.popup-menu-boxpointer,
+.wave-popup-menu .popup-menu-boxpointer,
+.popup-menu-boxpointer {
+    -arrow-rise: 0px !important;
+    -boxpointer-gap: 5px !important;
+    border-radius: 12px !important;
+}
+
+/* Spotlight Search Dialog Styles */
+.wave-spotlight-shield {
+    background-color: rgba(0, 0, 0, 0.45);
+}
+
+.wave-spotlight-window {
+    background-color: rgba(28, 28, 34, 0.96);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+    padding: 10px;
+    width: 580px;
+}
+
+.wave-spotlight-entry-box {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 6px;
+}
+
+.wave-spotlight-search-icon {
+    margin-right: 8px;
+}
+
+.wave-spotlight-entry {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.wave-spotlight-results {
+    padding-top: 4px;
+}
+
+.wave-spotlight-item {
+    padding: 6px 10px;
+    margin: 2px 0;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    background-color: transparent;
+    transition: background-color 100ms ease;
+}
+
+.wave-spotlight-item:hover,
+.wave-spotlight-item:focus {
+    background-color: rgba(255, 255, 255, 0.14);
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+.wave-spotlight-item-box {
+    margin: 0;
+}
+
+.wave-spotlight-item-icon {
+    margin-right: 10px;
+}
+
+.wave-spotlight-text-box {
+    margin-right: 8px;
+}
+
+.wave-spotlight-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f5f5f7;
+}
+
+.wave-spotlight-item-path {
+    font-size: 11px;
+    color: #a0a0ab;
+}
+
+.wave-spotlight-folder-btn {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    color: #c0c0cb;
+}
+
+.wave-spotlight-folder-btn:hover {
+    background-color: rgba(255, 255, 255, 0.22);
+    border: none;
+    outline: none;
+    box-shadow: none;
+    color: #ffffff;
+}
