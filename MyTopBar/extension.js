@@ -776,7 +776,7 @@ export default class WaveTopBarExtension extends Extension {
         // Internet Speed & Throughput Card
         const speedItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         const speedCard = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             style_class: 'wave-wifi-speed-card',
         });
@@ -915,11 +915,10 @@ export default class WaveTopBarExtension extends Extension {
             style: 'max-height: 220px;',
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
-            overlay_scrollbars: true,
             x_expand: true,
         });
         const netListBox = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
         });
         scroll.set_child(netListBox);
@@ -1177,13 +1176,13 @@ export default class WaveTopBarExtension extends Extension {
                     });
 
                     const win = new St.BoxLayout({
-                        vertical: true,
+                        orientation: Clutter.Orientation.VERTICAL,
                         style_class: 'wave-modal-window',
                         reactive: true,
                     });
                     win.connect('button-press-event', () => Clutter.EVENT_STOP);
 
-                    const header = new St.BoxLayout({ vertical: true, style_class: 'wave-modal-header' });
+                    const header = new St.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, style_class: 'wave-modal-header' });
                     const title = new St.Label({
                         text: _('Compartir Wi-Fi'),
                         style_class: 'wave-modal-title',
@@ -1332,13 +1331,13 @@ export default class WaveTopBarExtension extends Extension {
         });
 
         const win = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'wave-modal-window',
             reactive: true,
         });
         win.connect('button-press-event', () => Clutter.EVENT_STOP);
 
-        const header = new St.BoxLayout({ vertical: true, style_class: 'wave-modal-header' });
+        const header = new St.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, style_class: 'wave-modal-header' });
         const title = new St.Label({
             text: _('Conectarse a una red oculta'),
             style_class: 'wave-modal-title',
@@ -1463,13 +1462,13 @@ export default class WaveTopBarExtension extends Extension {
         });
 
         const win = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'wave-modal-window',
             reactive: true,
         });
         win.connect('button-press-event', () => Clutter.EVENT_STOP);
 
-        const header = new St.BoxLayout({ vertical: true, style_class: 'wave-modal-header' });
+        const header = new St.BoxLayout({ orientation: Clutter.Orientation.VERTICAL, style_class: 'wave-modal-header' });
         const title = new St.Label({
             text: `${_('Conectar a')} ${ssid}`,
             style_class: 'wave-modal-title',
