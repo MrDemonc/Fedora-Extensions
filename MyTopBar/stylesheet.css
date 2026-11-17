@@ -275,3 +275,206 @@
     box-shadow: none;
     color: #ffffff;
 }
+
+/* Custom Wi-Fi Menu Styles */
+.wave-wifi-menu {
+    min-width: 320px;
+    max-width: 380px;
+}
+
+.wave-wifi-header-box {
+    padding: 6px 10px;
+    spacing: 8px;
+}
+
+.wave-wifi-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.wave-wifi-subtitle {
+    font-size: 11px;
+    color: #9e9ea8;
+}
+
+.wave-wifi-speed-card {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 4px 8px;
+    spacing: 6px;
+}
+
+.wave-wifi-speed-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0a84ff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.wave-wifi-speed-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #f0f0f5;
+}
+
+.wave-wifi-speed-sub {
+    font-size: 11px;
+    color: #a0a0ab;
+}
+
+.wave-wifi-btn-compact {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    transition: background-color 120ms ease;
+}
+
+.wave-wifi-btn-compact:hover {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.wave-wifi-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #8e8e9a;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 4px 12px 2px 12px;
+}
+
+.wave-wifi-item-box {
+    spacing: 8px;
+}
+
+.wave-wifi-item-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.wave-wifi-item-name-active {
+    font-weight: 700;
+    color: #0a84ff;
+}
+
+.wave-wifi-item-rate {
+    font-size: 10px;
+    color: #8e8e98;
+}
+
+.wave-wifi-net-row {
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin: 1px 4px;
+    color: #ffffff;
+    transition: background-color 100ms ease;
+}
+
+.wave-wifi-net-row:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.wave-wifi-net-row:active {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.wave-wifi-badge {
+    background-color: rgba(10, 132, 255, 0.25);
+    color: #38a5ff;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* Modal Dialogs (QR Code & Hidden Network) */
+.wave-modal-shield {
+    background-color: rgba(0, 0, 0, 0.58);
+}
+
+.wave-modal-window {
+    background-color: rgba(28, 28, 34, 0.98);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+    padding: 18px;
+    width: 380px;
+    spacing: 12px;
+}
+
+.wave-modal-header {
+    spacing: 8px;
+}
+
+.wave-modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.wave-modal-subtitle {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0a84ff;
+}
+
+.wave-modal-qr-container {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 12px;
+    margin: 8px 0;
+}
+
+.wave-modal-pass-box {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 6px 12px;
+    spacing: 8px;
+}
+
+.wave-modal-pass-label {
+    font-size: 12px;
+    color: #d0d0d8;
+    font-family: monospace;
+}
+
+.wave-modal-entry {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #ffffff;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.wave-modal-btn-primary {
+    background-color: #0a84ff;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.wave-modal-btn-primary:hover {
+    background-color: #0071e3;
+}
+
+.wave-modal-btn-secondary {
+    background-color: rgba(255, 255, 255, 0.10);
+    color: #e0e0e8;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.wave-modal-btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+}
