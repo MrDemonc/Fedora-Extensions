@@ -26,6 +26,7 @@ import Shell from 'gi://Shell';
 import NM from 'gi://NM';
 import GnomeBluetooth from 'gi://GnomeBluetooth';
 import Cairo from 'gi://cairo';
+import Pango from 'gi://Pango';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -713,10 +714,16 @@ export default class WaveTopBarExtension extends Extension {
         this._wifiMenu = menu;
         menu.actor.add_style_class_name('wave-wifi-menu');
         menu.actor.width = 330;
+        if (menu.box) {
+            menu.box.add_style_class_name('wave-wifi-menu-content');
+        }
 
         // Adapt to Light / Dark Mode
         const isLight = Boolean(this._isLightMode);
         menu.actor.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+        if (menu.box) {
+            menu.box.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+        }
 
         // 1. Header: Wi-Fi toggle switch
         const isWifiOn = Boolean(this._nmClient && this._nmClient.wireless_enabled);
@@ -1564,13 +1571,24 @@ export default class WaveTopBarExtension extends Extension {
 
     _registerMenu(menu) {
         menu.actor.add_style_class_name('wave-popup-menu');
+        if (menu.box) {
+            menu.box.add_style_class_name('wave-popup-menu-content');
+        }
         const isLight = Boolean(this._isLightMode);
         if (isLight) {
             menu.actor.add_style_class_name('theme-light');
             menu.actor.remove_style_class_name('theme-dark');
+            if (menu.box) {
+                menu.box.add_style_class_name('theme-light');
+                menu.box.remove_style_class_name('theme-dark');
+            }
         } else {
             menu.actor.add_style_class_name('theme-dark');
             menu.actor.remove_style_class_name('theme-light');
+            if (menu.box) {
+                menu.box.add_style_class_name('theme-dark');
+                menu.box.remove_style_class_name('theme-light');
+            }
         }
         this._menuManager.addMenu(menu);
         Main.uiGroup.add_child(menu.actor);
@@ -1817,9 +1835,17 @@ export default class WaveTopBarExtension extends Extension {
             if (isLightMode) {
                 this._wifiMenu.actor.add_style_class_name('theme-light');
                 this._wifiMenu.actor.remove_style_class_name('theme-dark');
+                if (this._wifiMenu.box) {
+                    this._wifiMenu.box.add_style_class_name('theme-light');
+                    this._wifiMenu.box.remove_style_class_name('theme-dark');
+                }
             } else {
                 this._wifiMenu.actor.add_style_class_name('theme-dark');
                 this._wifiMenu.actor.remove_style_class_name('theme-light');
+                if (this._wifiMenu.box) {
+                    this._wifiMenu.box.add_style_class_name('theme-dark');
+                    this._wifiMenu.box.remove_style_class_name('theme-light');
+                }
             }
         }
 
