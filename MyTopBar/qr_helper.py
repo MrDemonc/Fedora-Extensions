@@ -34,7 +34,30 @@ def generate_via_libqrencode(text):
                     row = [int(qr.contents.data[y * w + x] & 1) for x in range(w)]
                     matrix.append(row)
                 lib.QRcode_free(qr)
-                return {'success': True, 'width': w, 'matrix': matrix}
+
+                # Generate clean SVG file
+                pad = 2
+                dim = w + pad * 2
+                rects = []
+                for y in range(w):
+                    for x in range(w):
+                        if matrix[y][x]:
+                            rects.append(f'M{x+pad},{y+pad}h1v1h-1z')
+                path_d = ''.join(rects)
+                svg = (
+                    f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {dim} {dim}" width="160" height="160">\n'
+                    f'  <rect width="100%" height="100%" fill="#ffffff" rx="3"/>\n'
+                    f'  <path d="{path_d}" fill="#161618"/>\n'
+                    f'</svg>'
+                )
+                svg_path = '/tmp/mytopbar_wifi_qr.svg'
+                try:
+                    with open(svg_path, 'w', encoding='utf-8') as f:
+                        f.write(svg)
+                except Exception:
+                    svg_path = None
+
+                return {'success': True, 'width': w, 'matrix': matrix, 'svg_path': svg_path}
         except Exception:
             continue
     return None

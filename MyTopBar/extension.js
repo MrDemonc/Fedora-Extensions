@@ -714,20 +714,26 @@ export default class WaveTopBarExtension extends Extension {
         this._wifiMenu = menu;
         menu.actor.add_style_class_name('wave-wifi-menu');
         menu.actor.width = 330;
-        if (menu.box) {
-            menu.box.add_style_class_name('wave-wifi-menu-content');
-        }
+        menu.actor.style = 'background-color: transparent !important; background: transparent !important; border: none !important; box-shadow: none !important;';
 
-        // Adapt to Light / Dark Mode
         const isLight = Boolean(this._isLightMode);
         menu.actor.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
         if (menu.box) {
+            menu.box.add_style_class_name('wave-wifi-menu-content');
             menu.box.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+            menu.box.style = (isLight
+                ? 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;'
+                : 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;')
+                + ' width: 330px !important; min-width: 330px !important; max-width: 330px !important;';
         }
 
         // 1. Header: Wi-Fi toggle switch
         const isWifiOn = Boolean(this._nmClient && this._nmClient.wireless_enabled);
         const switchItem = new PopupMenu.PopupSwitchMenuItem(_('Wi-Fi'), isWifiOn);
+        switchItem.activate = function(event) {
+            if (this._switch.mapped)
+                this.toggle();
+        };
         menu.addMenuItem(switchItem);
 
         // Off status label (shown when Wi-Fi is disabled)
@@ -789,7 +795,8 @@ export default class WaveTopBarExtension extends Extension {
         activeSeparator.actor.visible = isWifiOn && Boolean(activeInfo && activeInfo.ssid);
         menu.addMenuItem(activeSeparator);
 
-        const activeItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false });
+        const activeItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        activeItem.activate = function() {};
         activeItem.actor.visible = isWifiOn && Boolean(activeInfo && activeInfo.ssid);
         const activeBox = new St.BoxLayout({
             x_expand: true,
@@ -955,6 +962,15 @@ export default class WaveTopBarExtension extends Extension {
         const hiddenToggleItem = new PopupMenu.PopupMenuItem(_('+ Conectarse a una red oculta...'), { activate: false });
         hiddenToggleItem.closeOnActivate = false;
         hiddenToggleItem.actor.visible = isWifiOn;
+        hiddenToggleItem.activate = function() {
+            hiddenDrawerItem.actor.visible = !hiddenDrawerItem.actor.visible;
+            if (hiddenDrawerItem.actor.visible) {
+                GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                    hiddenSsidEntry.grab_key_focus();
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+        };
         menu.addMenuItem(hiddenToggleItem);
 
         const hiddenDrawerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
@@ -1042,16 +1058,6 @@ export default class WaveTopBarExtension extends Extension {
         hiddenDrawerItem.add_child(hiddenDrawerCard);
         menu.addMenuItem(hiddenDrawerItem);
 
-        hiddenToggleItem.connect('activate', () => {
-            hiddenDrawerItem.actor.visible = !hiddenDrawerItem.actor.visible;
-            if (hiddenDrawerItem.actor.visible) {
-                GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-                    hiddenSsidEntry.grab_key_focus();
-                    return GLib.SOURCE_REMOVE;
-                });
-            }
-        });
-
         // 6. Network Settings (always at bottom)
         const settingsSep = new PopupMenu.PopupSeparatorMenuItem();
         menu.addMenuItem(settingsSep);
@@ -1135,7 +1141,7 @@ export default class WaveTopBarExtension extends Extension {
                         console.warn('[WaveTopBar] Failed to parse QR JSON:', e);
                     }
 
-                    if (!qrData || !qrData.success || !qrData.matrix) {
+                    if (!qrData || !qrData.success) {
                         const errLabel = new St.Label({
                             text: _('No se pudo generar el código QR'),
                             style_class: 'wave-wifi-item-rate',
@@ -1145,37 +1151,21 @@ export default class WaveTopBarExtension extends Extension {
                         return;
                     }
 
-                    const matrix = qrData.matrix;
-                    const moduleSize = 5;
-                    const padding = 10;
-                    const canvasSize = matrix.length * moduleSize + padding * 2;
-
                     const qrBox = new St.BoxLayout({
                         style_class: 'wave-wifi-inline-qr-container',
                         x_align: Clutter.ActorAlign.CENTER,
+                        y_align: Clutter.ActorAlign.CENTER,
+                        style: 'padding: 6px; background-color: #ffffff; border-radius: 10px;',
                     });
-                    const drawingArea = new St.DrawingArea({
-                        width: canvasSize,
-                        height: canvasSize,
-                    });
-                    drawingArea.connect('repaint', (area) => {
-                        const cr = area.get_context();
-                        if (!cr) return;
-                        cr.setSourceRGB(1, 1, 1);
-                        cr.paint();
 
-                        cr.setSourceRGB(0.08, 0.08, 0.12);
-                        for (let y = 0; y < matrix.length; y++) {
-                            for (let x = 0; x < matrix[y].length; x++) {
-                                if (matrix[y][x] === 1) {
-                                    cr.rectangle(padding + x * moduleSize, padding + y * moduleSize, moduleSize, moduleSize);
-                                    cr.fill();
-                                }
-                            }
-                        }
-                        cr.$dispose();
-                    });
-                    qrBox.add_child(drawingArea);
+                    if (qrData.svg_path) {
+                        const qrFile = Gio.File.new_for_path(qrData.svg_path);
+                        const qrIcon = new St.Icon({
+                            gicon: new Gio.FileIcon({ file: qrFile }),
+                            icon_size: 160,
+                        });
+                        qrBox.add_child(qrIcon);
+                    }
                     container.add_child(qrBox);
 
                     if (password) {
@@ -1571,6 +1561,8 @@ export default class WaveTopBarExtension extends Extension {
 
     _registerMenu(menu) {
         menu.actor.add_style_class_name('wave-popup-menu');
+        menu.actor.style = 'background-color: transparent !important; background: transparent !important; border: none !important; box-shadow: none !important;';
+
         if (menu.box) {
             menu.box.add_style_class_name('wave-popup-menu-content');
         }
@@ -1581,6 +1573,7 @@ export default class WaveTopBarExtension extends Extension {
             if (menu.box) {
                 menu.box.add_style_class_name('theme-light');
                 menu.box.remove_style_class_name('theme-dark');
+                menu.box.style = 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;';
             }
         } else {
             menu.actor.add_style_class_name('theme-dark');
@@ -1588,6 +1581,7 @@ export default class WaveTopBarExtension extends Extension {
             if (menu.box) {
                 menu.box.add_style_class_name('theme-dark');
                 menu.box.remove_style_class_name('theme-light');
+                menu.box.style = 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;';
             }
         }
         this._menuManager.addMenu(menu);
@@ -1699,7 +1693,6 @@ export default class WaveTopBarExtension extends Extension {
             if (menu._boxPointer) {
                 menu.sourceActor = this._controlCenterBtn;
                 menu._boxPointer.setPosition(this._controlCenterBtn, 0.5);
-                menu._boxPointer.add_style_class_name('wave-popup-menu');
             }
 
             if (!this._qsMenuStateSignalId) {
@@ -1831,23 +1824,33 @@ export default class WaveTopBarExtension extends Extension {
             }
         }
 
-        if (this._wifiMenu && this._wifiMenu.isOpen) {
+        const updateMenuTheme = (m) => {
+            if (!m) return;
             if (isLightMode) {
-                this._wifiMenu.actor.add_style_class_name('theme-light');
-                this._wifiMenu.actor.remove_style_class_name('theme-dark');
-                if (this._wifiMenu.box) {
-                    this._wifiMenu.box.add_style_class_name('theme-light');
-                    this._wifiMenu.box.remove_style_class_name('theme-dark');
+                m.actor.add_style_class_name('theme-light');
+                m.actor.remove_style_class_name('theme-dark');
+                if (m.box) {
+                    m.box.add_style_class_name('theme-light');
+                    m.box.remove_style_class_name('theme-dark');
+                    m.box.style = 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;';
                 }
             } else {
-                this._wifiMenu.actor.add_style_class_name('theme-dark');
-                this._wifiMenu.actor.remove_style_class_name('theme-light');
-                if (this._wifiMenu.box) {
-                    this._wifiMenu.box.add_style_class_name('theme-dark');
-                    this._wifiMenu.box.remove_style_class_name('theme-light');
+                m.actor.add_style_class_name('theme-dark');
+                m.actor.remove_style_class_name('theme-light');
+                if (m.box) {
+                    m.box.add_style_class_name('theme-dark');
+                    m.box.remove_style_class_name('theme-light');
+                    m.box.style = 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;';
                 }
             }
-        }
+        };
+
+        if (this._wifiMenu && this._wifiMenu.isOpen) updateMenuTheme(this._wifiMenu);
+        if (this._batteryMenu && this._batteryMenu.isOpen) updateMenuTheme(this._batteryMenu);
+        if (this._clockMenu && this._clockMenu.isOpen) updateMenuTheme(this._clockMenu);
+        if (this._systemMenu && this._systemMenu.isOpen) updateMenuTheme(this._systemMenu);
+        if (this._appMenu && this._appMenu.isOpen) updateMenuTheme(this._appMenu);
+        if (this._contextMenu && this._contextMenu.isOpen) updateMenuTheme(this._contextMenu);
 
         // macOS Acrylic Glassmorphism styling (clean bottom separation border only, no top highlights)
         const borderColor = isLightMode ? 'rgba(0, 0, 0, 0.10)' : 'rgba(255, 255, 255, 0.14)';

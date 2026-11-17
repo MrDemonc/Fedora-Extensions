@@ -664,10 +664,8 @@
 /* --- POPUP MENUS: DARK MODE --- */
 .wave-popup-menu.theme-dark .popup-menu-content,
 .wave-popup-menu-content.theme-dark,
-.wave-popup-menu .popup-menu-content,
 .wave-wifi-menu.theme-dark .popup-menu-content,
-.wave-wifi-menu-content.theme-dark,
-.wave-wifi-menu .popup-menu-content {
+.wave-wifi-menu-content.theme-dark {
     background-color: rgba(28, 28, 32, 0.96) !important;
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -677,57 +675,42 @@
 
 .wave-popup-menu.theme-dark StLabel,
 .wave-popup-menu-content.theme-dark StLabel,
-.wave-popup-menu StLabel,
 .wave-wifi-menu.theme-dark StLabel,
 .wave-wifi-menu-content.theme-dark StLabel,
-.wave-wifi-menu StLabel,
 .wave-popup-menu.theme-dark .popup-menu-item StLabel,
 .wave-popup-menu-content.theme-dark .popup-menu-item StLabel,
-.wave-popup-menu .popup-menu-item StLabel,
 .wave-wifi-menu.theme-dark .popup-menu-item StLabel,
-.wave-wifi-menu-content.theme-dark .popup-menu-item StLabel,
-.wave-wifi-menu .popup-menu-item StLabel {
+.wave-wifi-menu-content.theme-dark .popup-menu-item StLabel {
     color: #ffffff !important;
 }
 
 .wave-popup-menu.theme-dark StIcon,
 .wave-popup-menu-content.theme-dark StIcon,
-.wave-popup-menu StIcon,
 .wave-wifi-menu.theme-dark StIcon,
 .wave-wifi-menu-content.theme-dark StIcon,
-.wave-wifi-menu StIcon,
 .wave-wifi-menu.theme-dark .wave-topbar-icon,
-.wave-wifi-menu .wave-topbar-icon,
 .wave-popup-menu.theme-dark .popup-menu-item StIcon,
 .wave-popup-menu-content.theme-dark .popup-menu-item StIcon,
-.wave-popup-menu .popup-menu-item StIcon,
 .wave-wifi-menu.theme-dark .popup-menu-item StIcon,
-.wave-wifi-menu-content.theme-dark .popup-menu-item StIcon,
-.wave-wifi-menu .popup-menu-item StIcon {
+.wave-wifi-menu-content.theme-dark .popup-menu-item StIcon {
     color: #ffffff !important;
 }
 
 .wave-popup-menu.theme-dark .popup-menu-item,
 .wave-popup-menu-content.theme-dark .popup-menu-item,
-.wave-popup-menu .popup-menu-item,
 .wave-wifi-menu.theme-dark .popup-menu-item,
-.wave-wifi-menu-content.theme-dark .popup-menu-item,
-.wave-wifi-menu .popup-menu-item {
+.wave-wifi-menu-content.theme-dark .popup-menu-item {
     color: #ffffff !important;
 }
 
 .wave-popup-menu.theme-dark .popup-menu-item:insensitive,
 .wave-popup-menu-content.theme-dark .popup-menu-item:insensitive,
-.wave-popup-menu .popup-menu-item:insensitive,
 .wave-wifi-menu.theme-dark .popup-menu-item:insensitive,
 .wave-wifi-menu-content.theme-dark .popup-menu-item:insensitive,
-.wave-wifi-menu .popup-menu-item:insensitive,
 .wave-popup-menu.theme-dark .popup-menu-item:insensitive StLabel,
 .wave-popup-menu-content.theme-dark .popup-menu-item:insensitive StLabel,
-.wave-popup-menu .popup-menu-item:insensitive StLabel,
 .wave-wifi-menu.theme-dark .popup-menu-item:insensitive StLabel,
-.wave-wifi-menu-content.theme-dark .popup-menu-item:insensitive StLabel,
-.wave-wifi-menu .popup-menu-item:insensitive StLabel {
+.wave-wifi-menu-content.theme-dark .popup-menu-item:insensitive StLabel {
     color: #98989d !important;
     opacity: 1.0 !important;
 }
@@ -738,18 +721,12 @@
 .wave-popup-menu-content.theme-dark .popup-menu-item:hover,
 .wave-popup-menu-content.theme-dark .popup-menu-item:active,
 .wave-popup-menu-content.theme-dark .popup-menu-item:focus,
-.wave-popup-menu .popup-menu-item:hover,
-.wave-popup-menu .popup-menu-item:active,
-.wave-popup-menu .popup-menu-item:focus,
 .wave-wifi-menu.theme-dark .popup-menu-item:hover,
 .wave-wifi-menu.theme-dark .popup-menu-item:active,
 .wave-wifi-menu.theme-dark .popup-menu-item:focus,
 .wave-wifi-menu-content.theme-dark .popup-menu-item:hover,
 .wave-wifi-menu-content.theme-dark .popup-menu-item:active,
-.wave-wifi-menu-content.theme-dark .popup-menu-item:focus,
-.wave-wifi-menu .popup-menu-item:hover,
-.wave-wifi-menu .popup-menu-item:active,
-.wave-wifi-menu .popup-menu-item:focus {
+.wave-wifi-menu-content.theme-dark .popup-menu-item:focus {
     background-color: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
     border-radius: 8px;
@@ -757,17 +734,93 @@
 
 .wave-popup-menu.theme-dark .popup-separator-menu-item,
 .wave-popup-menu-content.theme-dark .popup-separator-menu-item,
-.wave-popup-menu .popup-separator-menu-item,
 .wave-wifi-menu.theme-dark .popup-separator-menu-item,
 .wave-wifi-menu-content.theme-dark .popup-separator-menu-item,
-.wave-wifi-menu .popup-separator-menu-item,
 .wave-popup-menu.theme-dark .popup-separator-menu-item-separator,
 .wave-popup-menu-content.theme-dark .popup-separator-menu-item-separator,
-.wave-popup-menu .popup-separator-menu-item-separator,
 .wave-wifi-menu.theme-dark .popup-separator-menu-item-separator,
-.wave-wifi-menu-content.theme-dark .popup-separator-menu-item-separator,
-.wave-wifi-menu .popup-separator-menu-item-separator {
+.wave-wifi-menu-content.theme-dark .popup-separator-menu-item-separator {
     background-color: rgba(255, 255, 255, 0.12) !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
     height: 1px !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-speed-card {
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-speed-value {
+    color: #e5e5ea !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-item-name {
+    color: #ffffff !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-item-name-active,
+.wave-wifi-menu.theme-dark .wave-wifi-item-active-icon {
+    color: #0a84ff !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-net-row {
+    color: #ffffff !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-net-row:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-badge {
+    background-color: rgba(10, 132, 255, 0.25);
+    color: #38a5ff;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-section-title {
+    color: #8e8e9a !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-btn-compact {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-btn-compact:hover {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-inline-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-inline-qr-container {
+    background-color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-pass-box {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-pass-label {
+    color: #d0d0d8 !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-entry {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-entry StLabel {
+    color: #8e8e93 !important;
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-item-rate {
+    color: #8e8e98 !important;
 }
