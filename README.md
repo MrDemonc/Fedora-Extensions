@@ -11,7 +11,7 @@ This suite transforms your GNOME desktop into a fluid and intuitive workspace in
 Install or update the entire suite directly from your terminal **without needing to clone or download the repository manually**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/demonc/Demonc-extencions/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/MrDemonc/Fedora-Extensions/main/install.sh | bash
 ```
 
 The installer will prompt an interactive menu in your terminal so you can choose which components to install.
@@ -63,8 +63,8 @@ Compact macOS-style dock with fluid wave magnification animation.
 If you prefer to clone or download the repository locally:
 
 ```bash
-git clone https://github.com/demonc/Demonc-extencions.git
-cd Demonc-extencions
+git clone https://github.com/MrDemonc/Fedora-Extensions.git
+cd Fedora-Extensions
 ./install.sh
 ```
 
@@ -142,7 +142,7 @@ Demonc-extencions/
 ## 👤 Author
 
 - **demonc**
-- Repository: [Demonc-extencions](https://github.com/demonc/Demonc-extencions)
+- Repository: [Fedora-Extensions](https://github.com/MrDemonc/Fedora-Extensions)
 
 ---
 

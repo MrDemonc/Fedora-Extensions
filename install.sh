@@ -2,7 +2,7 @@
 # ==============================================================================
 # Demonc Extensions Suite - Master Installer
 # Supports local execution and remote execution via curl:
-#   curl -fsSL https://raw.githubusercontent.com/demonc/Demonc-extencions/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/MrDemonc/Fedora-Extensions/main/install.sh | bash
 # ==============================================================================
 set -e
 
@@ -34,7 +34,7 @@ handle_remote_mode() {
         TMP_DIR=$(mktemp -d /tmp/demonc-ext.XXXXXX)
         trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
-        REPO_URL="https://github.com/demonc/Demonc-extencions"
+        REPO_URL="https://github.com/MrDemonc/Fedora-Extensions"
         CLONED=0
 
         if command -v git &>/dev/null; then
