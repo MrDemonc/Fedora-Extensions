@@ -279,54 +279,37 @@
 /* Custom Wi-Fi Menu Styles */
 .wave-wifi-menu {
     min-width: 320px;
-    max-width: 380px;
+    max-width: 370px;
 }
 
-.wave-wifi-header-box {
-    padding: 6px 10px;
-    spacing: 8px;
-}
-
-.wave-wifi-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #ffffff;
-}
-
-.wave-wifi-subtitle {
-    font-size: 11px;
-    color: #9e9ea8;
-}
-
+/* Speed / Throughput Card (Minimalist) */
 .wave-wifi-speed-card {
-    background-color: rgba(255, 255, 255, 0.06);
+    background-color: rgba(255, 255, 255, 0.07);
     border-radius: 8px;
-    padding: 8px 12px;
-    margin: 4px 8px;
-    spacing: 6px;
-}
-
-.wave-wifi-speed-title {
-    font-size: 10px;
-    font-weight: 700;
-    color: #0a84ff;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    padding: 6px 12px;
+    margin: 2px 6px 4px 6px;
 }
 
 .wave-wifi-speed-value {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    color: #f0f0f5;
+    color: #e5e5ea;
 }
 
-.wave-wifi-speed-sub {
-    font-size: 11px;
-    color: #a0a0ab;
+/* Icon Buttons (e.g. QR button, Rescan button) */
+.wave-wifi-icon-btn {
+    padding: 3px 6px;
+    border-radius: 6px;
+    background-color: transparent;
+    transition: background-color 100ms ease;
+}
+
+.wave-wifi-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
 }
 
 .wave-wifi-btn-compact {
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
@@ -337,6 +320,20 @@
 
 .wave-wifi-btn-compact:hover {
     background-color: rgba(255, 255, 255, 0.22);
+}
+
+.wave-wifi-btn-primary {
+    background-color: #0a84ff;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: background-color 100ms ease;
+}
+
+.wave-wifi-btn-primary:hover {
+    background-color: #0071e3;
 }
 
 .wave-wifi-section-title {
@@ -388,93 +385,135 @@
     background-color: rgba(10, 132, 255, 0.25);
     color: #38a5ff;
     border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 10px;
+    padding: 1px 5px;
+    font-size: 9px;
     font-weight: 700;
 }
 
-/* Modal Dialogs (QR Code & Hidden Network) */
-.wave-modal-shield {
-    background-color: rgba(0, 0, 0, 0.58);
+/* Inline Collapsible Cards (QR & Password Forms) */
+.wave-wifi-inline-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 10px;
+    padding: 10px;
+    margin: 4px 8px 6px 8px;
 }
 
-.wave-modal-window {
-    background-color: rgba(28, 28, 34, 0.98);
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
-    padding: 18px;
-    width: 380px;
-    spacing: 12px;
-}
-
-.wave-modal-header {
-    spacing: 8px;
-}
-
-.wave-modal-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #ffffff;
-}
-
-.wave-modal-subtitle {
-    font-size: 12px;
-    font-weight: 600;
-    color: #0a84ff;
-}
-
-.wave-modal-qr-container {
+.wave-wifi-inline-qr-container {
     background-color: #ffffff;
-    border-radius: 12px;
-    padding: 12px;
-    margin: 8px 0;
+    border-radius: 10px;
+    padding: 8px;
+    margin: 4px auto;
 }
 
-.wave-modal-pass-box {
+.wave-wifi-pass-box {
     background-color: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 6px 12px;
-    spacing: 8px;
+    border-radius: 6px;
+    padding: 4px 10px;
+    margin-top: 6px;
+    spacing: 6px;
 }
 
-.wave-modal-pass-label {
-    font-size: 12px;
+.wave-wifi-pass-label {
+    font-size: 11px;
     color: #d0d0d8;
     font-family: monospace;
 }
 
-.wave-modal-entry {
+.wave-wifi-entry {
     background-color: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    padding: 5px 8px;
     color: #ffffff;
-    font-size: 13px;
-    margin-bottom: 8px;
+    font-size: 11px;
+    margin: 2px 0;
 }
 
-.wave-modal-btn-primary {
-    background-color: #0a84ff;
-    color: #ffffff;
-    border-radius: 8px;
-    padding: 6px 16px;
-    font-size: 12px;
-    font-weight: 600;
+/* --- LIGHT MODE ADAPTATION --- */
+.wave-popup-menu.theme-light,
+.wave-wifi-menu.theme-light {
+    background-color: rgba(246, 246, 248, 0.96) !important;
+    color: #1c1c1e !important;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16) !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
 }
 
-.wave-modal-btn-primary:hover {
-    background-color: #0071e3;
+.wave-wifi-menu.theme-light .popup-menu-item {
+    color: #1c1c1e !important;
 }
 
-.wave-modal-btn-secondary {
-    background-color: rgba(255, 255, 255, 0.10);
-    color: #e0e0e8;
-    border-radius: 8px;
-    padding: 6px 16px;
-    font-size: 12px;
-    font-weight: 600;
+.wave-wifi-menu.theme-light .wave-wifi-speed-card {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
-.wave-modal-btn-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.18);
+.wave-wifi-menu.theme-light .wave-wifi-speed-value {
+    color: #1c1c1e;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-item-name {
+    color: #1c1c1e;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-item-name-active {
+    color: #0071e3;
+    font-weight: 700;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-net-row {
+    color: #1c1c1e;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-net-row:hover {
+    background-color: rgba(0, 0, 0, 0.07);
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-badge {
+    background-color: rgba(0, 113, 227, 0.15);
+    color: #0071e3;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-section-title {
+    color: #636366;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-icon-btn:hover {
+    background-color: rgba(0, 0, 0, 0.10);
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-btn-compact {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #1c1c1e;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-btn-compact:hover {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-inline-card {
+    background-color: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-inline-qr-container {
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-pass-box {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-pass-label {
+    color: #1c1c1e;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-entry {
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    color: #1c1c1e;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-item-rate {
+    color: #636366;
 }

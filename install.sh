@@ -120,26 +120,16 @@ install_topbar() {
     mkdir -p "$dest"
     cp -r "$src"/* "$dest/"
 
-    # Hot compatibility with active Wayland session
-    local compat_dest="$EXT_DIR/$OLD_TOPBAR_UUID"
-    rm -rf "$compat_dest"
-    mkdir -p "$compat_dest"
-    cp -r "$src"/* "$compat_dest/"
-    sed -i "s/$TOPBAR_UUID/$OLD_TOPBAR_UUID/g" "$compat_dest/metadata.json" 2>/dev/null || true
-    sed -i "s/org.gnome.shell.extensions.mytopbar/org.gnome.shell.extensions.wave-topbar/g" "$compat_dest/metadata.json" 2>/dev/null || true
-    if [ -f "/home/demonc/Documentos/proyects/wave-topbar/schemas/org.gnome.shell.extensions.wave-topbar.gschema.xml" ]; then
-        cp "/home/demonc/Documentos/proyects/wave-topbar/schemas/org.gnome.shell.extensions.wave-topbar.gschema.xml" "$compat_dest/schemas/"
-        glib-compile-schemas "$compat_dest/schemas"
-    fi
+    # Remove any old legacy duplicate
+    rm -rf "$EXT_DIR/$OLD_TOPBAR_UUID" 2>/dev/null || true
+    remove_from_gsettings "$OLD_TOPBAR_UUID"
 
     echo "    3. Enabling in GNOME Shell..."
     enable_in_gsettings "$TOPBAR_UUID"
-    enable_in_gsettings "$OLD_TOPBAR_UUID"
 
     echo "    4. Reloading extension in real time..."
-    gnome-extensions disable "$OLD_TOPBAR_UUID" 2>/dev/null || true
+    gnome-extensions disable "$TOPBAR_UUID" 2>/dev/null || true
     sleep 0.5
-    gnome-extensions enable "$OLD_TOPBAR_UUID" 2>/dev/null || true
     gnome-extensions enable "$TOPBAR_UUID" 2>/dev/null || true
 
     echo -e "${GREEN}    ✓ MyTopBar successfully installed and activated.${RESET}\n"
@@ -170,26 +160,16 @@ install_dock() {
           "$src/schemas" \
           "$dest/"
 
-    # Hot compatibility with active Wayland session
-    local compat_dest="$EXT_DIR/$OLD_DOCK_UUID"
-    rm -rf "$compat_dest"
-    mkdir -p "$compat_dest"
-    cp -r "$dest"/* "$compat_dest/"
-    sed -i "s/$DOCK_UUID/$OLD_DOCK_UUID/g" "$compat_dest/metadata.json" 2>/dev/null || true
-    sed -i "s/org.gnome.shell.extensions.mydock/org.gnome.shell.extensions.mac-wave-dock/g" "$compat_dest/metadata.json" 2>/dev/null || true
-    if [ -f "/home/demonc/Documentos/proyects/mac-wave-dock/schemas/org.gnome.shell.extensions.mac-wave-dock.gschema.xml" ]; then
-        cp "/home/demonc/Documentos/proyects/mac-wave-dock/schemas/org.gnome.shell.extensions.mac-wave-dock.gschema.xml" "$compat_dest/schemas/"
-        glib-compile-schemas "$compat_dest/schemas"
-    fi
+    # Remove any old legacy duplicate
+    rm -rf "$EXT_DIR/$OLD_DOCK_UUID" 2>/dev/null || true
+    remove_from_gsettings "$OLD_DOCK_UUID"
 
     echo "    3. Enabling in GNOME Shell..."
     enable_in_gsettings "$DOCK_UUID"
-    enable_in_gsettings "$OLD_DOCK_UUID"
 
     echo "    4. Reloading extension in real time..."
-    gnome-extensions disable "$OLD_DOCK_UUID" 2>/dev/null || true
+    gnome-extensions disable "$DOCK_UUID" 2>/dev/null || true
     sleep 0.5
-    gnome-extensions enable "$OLD_DOCK_UUID" 2>/dev/null || true
     gnome-extensions enable "$DOCK_UUID" 2>/dev/null || true
 
     echo -e "${GREEN}    ✓ MyDock successfully installed and activated.${RESET}\n"
