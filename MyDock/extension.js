@@ -1245,7 +1245,7 @@ export default class MacWaveDockExtension extends Extension {
         try {
             this.openPreferences();
         } catch (e) {
-            GLib.spawn_command_line_async('gnome-extensions prefs mac-wave-dock@demonc');
+            GLib.spawn_command_line_async('gnome-extensions prefs MyDock@demonc');
         }
     }
 

@@ -12,7 +12,7 @@ import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/
 
 const DesktopAppInfo = GioUnix?.DesktopAppInfo || Gio.DesktopAppInfo;
 
-export default class MacWaveDockPreferences extends ExtensionPreferences {
+export default class MyDockPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings;

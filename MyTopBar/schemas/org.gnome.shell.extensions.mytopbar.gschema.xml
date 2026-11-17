@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="wave-topbar">
-  <schema id="org.gnome.shell.extensions.wave-topbar" path="/org/gnome/shell/extensions/wave-topbar/">
+<schemalist gettext-domain="mytopbar">
+  <schema id="org.gnome.shell.extensions.mytopbar" path="/org/gnome/shell/extensions/mytopbar/">
     <key name="bar-height" type="i">
       <default>26</default>
       <summary>Bar Height</summary>

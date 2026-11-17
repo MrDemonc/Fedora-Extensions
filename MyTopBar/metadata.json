@@ -1,0 +1,17 @@
+{
+  "name": "MyTopBar",
+  "description": "Barra superior moderna y elegante con menú de sistema, título de aplicación activa, calendario integrado, centro de control y estética translúcida.",
+  "uuid": "MyTopBar@demonc",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51"
+  ],
+  "settings-schema": "org.gnome.shell.extensions.mytopbar",
+  "url": "https://github.com/demonc/Demonc-extencions",
+  "version": 17
+}

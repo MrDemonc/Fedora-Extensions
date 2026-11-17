@@ -121,6 +121,30 @@ export default class WaveTopBarExtension extends Extension {
                 this._updateActiveApp();
                 this._trackFocusWindow();
             },
+            'in-fullscreen-changed', () => this._scheduleCheck(),
+            'window-created', () => this._scheduleCheck(),
+            'restacked', () => this._scheduleCheck(),
+            this
+        );
+
+        global.window_manager.connectObject(
+            'size-changed', () => this._scheduleCheck(),
+            'minimize', () => {
+                this._updateActiveApp();
+                this._scheduleCheck();
+            },
+            'unminimize', () => {
+                this._updateActiveApp();
+                this._scheduleCheck();
+            },
+            'destroy', () => {
+                this._updateActiveApp();
+                this._scheduleCheck();
+            },
+            'map', () => {
+                this._updateActiveApp();
+                this._scheduleCheck();
+            },
             this
         );
 
@@ -1240,7 +1264,7 @@ export default class WaveTopBarExtension extends Extension {
         menu.addMenuItem(header);
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        const prefsItem = new PopupMenu.PopupMenuItem(_('Configuración de Wave Top Bar...'));
+        const prefsItem = new PopupMenu.PopupMenuItem(_('Configuración de MyTopBar...'));
         prefsItem.connect('activate', () => this._openPreferences());
         menu.addMenuItem(prefsItem);
 
@@ -1266,7 +1290,7 @@ export default class WaveTopBarExtension extends Extension {
         try {
             this.openPreferences();
         } catch (e) {
-            GLib.spawn_command_line_async('gnome-extensions prefs wave-topbar@demonc');
+            GLib.spawn_command_line_async('gnome-extensions prefs MyTopBar@demonc');
         }
     }
 
@@ -1697,7 +1721,7 @@ export default class WaveTopBarExtension extends Extension {
 
         const win = global.display.focus_window;
         if (!win || win.is_skip_taskbar()) {
-            this._checkWin();
+            this._scheduleCheck();
             return;
         }
 
@@ -1731,6 +1755,78 @@ export default class WaveTopBarExtension extends Extension {
         });
     }
 
+    _isWindowTriggeringAutoHide(win, monitor) {
+        if (!win || win.get_monitor() !== monitor.index)
+            return false;
+        if (win.is_hidden() || win.minimized)
+            return false;
+        if (win.is_skip_taskbar())
+            return false;
+
+        const activeWS = global.workspace_manager.get_active_workspace();
+        if (activeWS && win.get_workspace() && win.get_workspace() !== activeWS)
+            return false;
+
+        // Fullscreen
+        if (win.fullscreen || (typeof win.is_fullscreen === 'function' && win.is_fullscreen()))
+            return true;
+
+        // Maximized (both horizontally & vertically, or vertically tiled)
+        if ((typeof win.is_maximized === 'function' && win.is_maximized()) ||
+            win.maximized_vertically ||
+            (win.maximized_horizontally && win.maximized_vertically)) {
+            return true;
+        }
+
+        // Overlapping top bar resting area
+        const frameRect = win.get_frame_rect();
+        if (frameRect) {
+            const isNearTop = frameRect.y < (monitor.y + this._barHeight);
+            if (isNearTop)
+                return true;
+        }
+
+        return false;
+    }
+
+    _shouldAutoHide() {
+        if (!this._settings || !this._settings.get_boolean('autohide-in-fullscreen-or-maximized'))
+            return false;
+
+        if (Main.overview.visible)
+            return false;
+
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return false;
+
+        // 1. Primary monitor in fullscreen mode
+        if (typeof monitor.inFullscreen === 'boolean' && monitor.inFullscreen)
+            return true;
+
+        if (typeof global.display.get_monitor_in_fullscreen === 'function') {
+            if (global.display.get_monitor_in_fullscreen(monitor.index))
+                return true;
+        }
+
+        // 2. Focused window (if valid, visible and not minimized)
+        const focusWin = global.display.focus_window;
+        if (focusWin && !focusWin.minimized && !focusWin.is_hidden() && this._isWindowTriggeringAutoHide(focusWin, monitor))
+            return true;
+
+        // 3. Any visible, non-minimized window on the current active workspace that is maximized, fullscreen, or overlapping top bar
+        const workspace = global.workspace_manager.get_active_workspace();
+        if (workspace) {
+            const windows = workspace.list_windows();
+            for (const win of windows) {
+                if (this._isWindowTriggeringAutoHide(win, monitor))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
     _checkWin() {
         if (!this._topBar || !this._settings)
             return;
@@ -1752,36 +1848,7 @@ export default class WaveTopBarExtension extends Extension {
             return;
         }
 
-        if (!this._focusWin) {
-            this._userForced = false;
-            this._stopPointerWatch();
-            this._teardownEdgeTracker();
-            this._showTopBarAnimated();
-            return;
-        }
-
-        const activeWS = global.workspace_manager.get_active_workspace_index();
-        const winWS = this._focusWin.get_workspace()?.index();
-        if (activeWS !== winWS)
-            return;
-
-        const monitor = Main.layoutManager.primaryMonitor;
-        if (!monitor || this._focusWin.get_monitor() !== monitor.index) {
-            this._userForced = false;
-            this._stopPointerWatch();
-            this._teardownEdgeTracker();
-            this._showTopBarAnimated();
-            return;
-        }
-
-        const rect = this._focusWin.get_frame_rect();
-        const isFS = this._focusWin.fullscreen || (typeof this._focusWin.is_fullscreen === 'function' && this._focusWin.is_fullscreen());
-        const isMax = (this._focusWin.maximized_vertically && this._focusWin.maximized_horizontally) ||
-                      this._focusWin.maximized_vertically ||
-                      (typeof this._focusWin.is_maximized === 'function' && this._focusWin.is_maximized());
-        const isNearTop = rect ? (rect.y < (monitor.y + this._barHeight)) : false;
-
-        if (isFS || isMax || isNearTop) {
+        if (this._shouldAutoHide()) {
             if (this._userForced)
                 return;
             this._hideTopBarAnimated();
@@ -2069,6 +2136,7 @@ export default class WaveTopBarExtension extends Extension {
         }
 
         global.display.disconnectObject(this);
+        global.window_manager.disconnectObject(this);
         Shell.WindowTracker.get_default().disconnectObject(this);
         Shell.AppSystem.get_default().disconnectObject(this);
         global.workspace_manager.disconnectObject(this);

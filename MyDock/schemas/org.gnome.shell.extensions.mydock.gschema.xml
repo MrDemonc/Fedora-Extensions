@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="mac-wave-dock">
-  <schema id="org.gnome.shell.extensions.mac-wave-dock" path="/org/gnome/shell/extensions/mac-wave-dock/">
+<schemalist gettext-domain="mydock">
+  <schema id="org.gnome.shell.extensions.mydock" path="/org/gnome/shell/extensions/mydock/">
     <key name="icon-size" type="i">
       <default>40</default>
       <summary>Base Icon Size</summary>
