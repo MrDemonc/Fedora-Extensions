@@ -712,45 +712,25 @@ export default class WaveTopBarExtension extends Extension {
         const menu = new PopupMenu.PopupMenu(this._wifiBtn, 0.5, St.Side.TOP);
         this._wifiMenu = menu;
         menu.actor.add_style_class_name('wave-wifi-menu');
+        menu.actor.width = 330;
 
         // Adapt to Light / Dark Mode
-        const isLight = this._getEffectiveColorMode() === 'light';
+        const isLight = Boolean(this._isLightMode);
         menu.actor.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
 
-        // Header: Wi-Fi toggle switch
+        // 1. Header: Wi-Fi toggle switch
         const isWifiOn = Boolean(this._nmClient && this._nmClient.wireless_enabled);
         const switchItem = new PopupMenu.PopupSwitchMenuItem(_('Wi-Fi'), isWifiOn);
-        switchItem.connect('toggled', (item, state) => {
-            if (this._nmClient) {
-                this._nmClient.wireless_enabled = state;
-                this._updateNetwork();
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
-                    if (this._wifiMenu === menu && menu.isOpen) {
-                        this._showWifiMenu();
-                    }
-                    return GLib.SOURCE_REMOVE;
-                });
-            }
-        });
         menu.addMenuItem(switchItem);
 
-        if (!isWifiOn) {
-            const offLabel = new PopupMenu.PopupMenuItem(_('Wi-Fi desactivado'), { reactive: false });
-            menu.addMenuItem(offLabel);
-            menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-            const settingsItem = new PopupMenu.PopupMenuItem(_('Configuración de red...'));
-            settingsItem.connect('activate', () => {
-                GLib.spawn_command_line_async('gnome-control-center wifi');
-            });
-            menu.addMenuItem(settingsItem);
-            this._registerMenu(menu);
-            return;
-        }
-
-        const activeInfo = this._getActiveWifiInfo();
+        // Off status label (shown when Wi-Fi is disabled)
+        const offLabelItem = new PopupMenu.PopupMenuItem(_('Wi-Fi desactivado'), { reactive: false });
+        offLabelItem.actor.visible = !isWifiOn;
+        menu.addMenuItem(offLabelItem);
 
         // 2. Clean Minimal Speed Throughput Card (NO "velocidad de internet" title, NO test button)
         const speedItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        speedItem.actor.visible = isWifiOn;
         const speedCard = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
@@ -767,13 +747,15 @@ export default class WaveTopBarExtension extends Extension {
         });
         speedCard.add_child(txRxIcon);
 
+        let activeInfo = this._getActiveWifiInfo();
         const linkStr = activeInfo ? `   (${activeInfo.band} • ${activeInfo.bitrate} Mbps)` : '';
         const throughputLabel = new St.Label({
-            text: `↓ 0.0 KB/s   ↑ 0.0 KB/s${linkStr}`,
+            text: `↓  0.0 KB/s   ↑  0.0 KB/s${linkStr}`,
             style_class: 'wave-wifi-speed-value',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        throughputLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         speedCard.add_child(throughputLabel);
         speedItem.add_child(speedCard);
         menu.addMenuItem(speedItem);
@@ -786,107 +768,129 @@ export default class WaveTopBarExtension extends Extension {
                     this._wifiThroughputTimerId = 0;
                     return GLib.SOURCE_REMOVE;
                 }
-                const tp = this._readWifiThroughput(activeInfo.iface);
                 const curInfo = this._getActiveWifiInfo();
-                const curLink = curInfo ? `   (${curInfo.band} • ${curInfo.bitrate} Mbps)` : '';
+                if (!curInfo || !curInfo.iface) return GLib.SOURCE_CONTINUE;
+                const tp = this._readWifiThroughput(curInfo.iface);
+                const curLink = `   (${curInfo.band} • ${curInfo.bitrate} Mbps)`;
                 throughputLabel.text = `↓ ${tp.down}   ↑ ${tp.up}${curLink}`;
                 return GLib.SOURCE_CONTINUE;
             });
         }
 
         // 3. Active Connected Network with Inline QR Button (ICON ONLY, NO TEXT, NO EMOJI)
-        if (activeInfo && activeInfo.ssid) {
-            menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const activeSeparator = new PopupMenu.PopupSeparatorMenuItem();
+        activeSeparator.actor.visible = isWifiOn && Boolean(activeInfo && activeInfo.ssid);
+        menu.addMenuItem(activeSeparator);
 
-            const activeItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false });
-            const activeBox = new St.BoxLayout({
-                x_expand: true,
-                y_align: Clutter.ActorAlign.CENTER,
-                style_class: 'wave-wifi-item-box',
-            });
+        const activeItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false });
+        activeItem.actor.visible = isWifiOn && Boolean(activeInfo && activeInfo.ssid);
+        const activeBox = new St.BoxLayout({
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style_class: 'wave-wifi-item-box',
+        });
 
-            const sigIcon = new St.Icon({
-                icon_name: this._getSignalIconName(activeInfo.strength),
-                icon_size: 14,
-                style_class: 'wave-topbar-icon',
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            activeBox.add_child(sigIcon);
+        const sigIcon = new St.Icon({
+            icon_name: activeInfo ? this._getSignalIconName(activeInfo.strength) : 'network-wireless-signal-excellent-symbolic',
+            icon_size: 14,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        activeBox.add_child(sigIcon);
 
-            const ssidLabel = new St.Label({
-                text: activeInfo.ssid,
-                style_class: 'wave-wifi-item-name wave-wifi-item-name-active',
-                y_align: Clutter.ActorAlign.CENTER,
-                x_expand: true,
-            });
-            activeBox.add_child(ssidLabel);
+        const ssidLabel = new St.Label({
+            text: activeInfo ? activeInfo.ssid : '',
+            style_class: 'wave-wifi-item-name wave-wifi-item-name-active',
+            y_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
+        activeBox.add_child(ssidLabel);
 
-            if (activeInfo.band === '5 GHz') {
-                const badge = new St.Label({
-                    text: '5G',
-                    style_class: 'wave-wifi-badge',
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-                activeBox.add_child(badge);
+        const badge5g = new St.Label({
+            text: '5G',
+            style_class: 'wave-wifi-badge',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: Boolean(activeInfo && activeInfo.band === '5 GHz'),
+        });
+        activeBox.add_child(badge5g);
+
+        const checkIcon = new St.Icon({
+            icon_name: 'emblem-ok-symbolic',
+            icon_size: 14,
+            style_class: 'wave-topbar-icon wave-wifi-item-active-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        activeBox.add_child(checkIcon);
+
+        // QR Icon Button: ONLY QR ICON, NO TEXT, NO EMOJI
+        const qrBtn = new St.Button({
+            style_class: 'wave-wifi-icon-btn',
+            can_focus: true,
+            track_hover: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const qrIconFile = Gio.File.new_for_path(
+            GLib.build_filenamev([this.path, 'assets', 'qr-code-symbolic.svg'])
+        );
+        const qrIcon = new St.Icon({
+            gicon: new Gio.FileIcon({ file: qrIconFile }),
+            fallback_icon_name: 'view-reveal-symbolic',
+            icon_size: 15,
+            style_class: 'wave-topbar-icon',
+        });
+        qrBtn.set_child(qrIcon);
+        activeBox.add_child(qrBtn);
+
+        activeItem.add_child(activeBox);
+        menu.addMenuItem(activeItem);
+
+        // Inline QR Drawer (revealed inside the menu when clicking qrBtn)
+        const inlineQrItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        inlineQrItem.actor.visible = false;
+        const inlineQrCard = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            style_class: 'wave-wifi-inline-card',
+            style: 'spacing: 8px;',
+        });
+        inlineQrItem.add_child(inlineQrCard);
+        menu.addMenuItem(inlineQrItem);
+
+        let qrLoadedSsid = null;
+        qrBtn.connect('clicked', () => {
+            const curInfo = this._getActiveWifiInfo();
+            if (!curInfo || !curInfo.ssid) return;
+            const willOpen = !inlineQrItem.actor.visible;
+            inlineQrItem.actor.visible = willOpen;
+            if (willOpen && qrLoadedSsid !== curInfo.ssid) {
+                qrLoadedSsid = curInfo.ssid;
+                this._loadInlineQr(curInfo.ssid, inlineQrCard);
             }
+        });
 
-            const checkIcon = new St.Icon({
-                icon_name: 'emblem-ok-symbolic',
-                icon_size: 14,
-                style_class: 'wave-topbar-icon',
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            activeBox.add_child(checkIcon);
+        // Helper to update active network section dynamically in-place
+        const updateActiveSection = () => {
+            const curInfo = this._getActiveWifiInfo();
+            if (curInfo && curInfo.ssid && switchItem.state) {
+                sigIcon.icon_name = this._getSignalIconName(curInfo.strength);
+                ssidLabel.text = curInfo.ssid;
+                badge5g.visible = (curInfo.band === '5 GHz');
+                activeSeparator.actor.visible = true;
+                activeItem.actor.visible = true;
+            } else {
+                activeSeparator.actor.visible = false;
+                activeItem.actor.visible = false;
+                inlineQrItem.actor.visible = false;
+            }
+        };
 
-            // QR Icon Button: ONLY QR ICON, NO TEXT, NO EMOJI
-            const qrBtn = new St.Button({
-                style_class: 'wave-wifi-icon-btn',
-                can_focus: true,
-                track_hover: true,
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            const qrIconFile = Gio.File.new_for_path(
-                GLib.build_filenamev([this.path, 'assets', 'qr-code-symbolic.svg'])
-            );
-            const qrIcon = new St.Icon({
-                gicon: new Gio.FileIcon({ file: qrIconFile }),
-                fallback_icon_name: 'view-reveal-symbolic',
-                icon_size: 15,
-                style_class: 'wave-topbar-icon',
-            });
-            qrBtn.set_child(qrIcon);
-            qrBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
-            activeBox.add_child(qrBtn);
+        // 4. Available Networks Section Header
+        const netSeparator = new PopupMenu.PopupSeparatorMenuItem();
+        netSeparator.actor.visible = isWifiOn;
+        menu.addMenuItem(netSeparator);
 
-            activeItem.add_child(activeBox);
-            menu.addMenuItem(activeItem);
-
-            // Inline QR Drawer (revealed inside the menu when clicking qrBtn)
-            const inlineQrItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-            inlineQrItem.actor.visible = false;
-            const inlineQrCard = new St.BoxLayout({
-                orientation: Clutter.Orientation.VERTICAL,
-                x_expand: true,
-                style_class: 'wave-wifi-inline-card',
-                style: 'spacing: 8px;',
-            });
-            inlineQrItem.add_child(inlineQrCard);
-            menu.addMenuItem(inlineQrItem);
-
-            let qrLoaded = false;
-            qrBtn.connect('clicked', () => {
-                inlineQrItem.actor.visible = !inlineQrItem.actor.visible;
-                if (inlineQrItem.actor.visible && !qrLoaded) {
-                    qrLoaded = true;
-                    this._loadInlineQr(activeInfo.ssid, inlineQrCard);
-                }
-            });
-        }
-
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        // Available Networks Section Header
         const netHeaderItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        netHeaderItem.actor.visible = isWifiOn;
         const netHeaderBox = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER });
         const netTitle = new St.Label({
             text: _('REDES DISPONIBLES'),
@@ -903,13 +907,13 @@ export default class WaveTopBarExtension extends Extension {
         const rescanIcon = new St.Icon({
             icon_name: 'view-refresh-symbolic',
             icon_size: 12,
+            style_class: 'wave-topbar-icon',
         });
         rescanBtn.set_child(rescanIcon);
-        rescanBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
         rescanBtn.connect('clicked', () => {
             this._runCommandAsync(['nmcli', 'dev', 'wifi', 'rescan'], () => {
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
-                    this._refreshWifiNetworksList(netListBox, menu);
+                    this._refreshWifiNetworksList(netListBox, menu, updateActiveSection);
                     return GLib.SOURCE_REMOVE;
                 });
             });
@@ -920,6 +924,7 @@ export default class WaveTopBarExtension extends Extension {
 
         // Scrollable Networks List Container
         const scrollItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        scrollItem.actor.visible = isWifiOn;
         const scroll = new St.ScrollView({
             style: 'max-height: 200px;',
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -934,13 +939,15 @@ export default class WaveTopBarExtension extends Extension {
         scrollItem.add_child(scroll);
         menu.addMenuItem(scrollItem);
 
-        // Populate networks
-        this._refreshWifiNetworksList(netListBox, menu);
+        // Populate networks if Wi-Fi is on
+        if (isWifiOn) {
+            this._refreshWifiNetworksList(netListBox, menu, updateActiveSection);
+        }
 
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        // 4. Connect to Hidden Network (Inline Form inside the menu)
-        const hiddenToggleItem = new PopupMenu.PopupMenuItem(_('+ Conectarse a una red oculta...'));
+        // 5. Connect to Hidden Network (Inline Form inside the menu)
+        const hiddenToggleItem = new PopupMenu.PopupMenuItem(_('+ Conectarse a una red oculta...'), { activate: false });
+        hiddenToggleItem.closeOnActivate = false;
+        hiddenToggleItem.actor.visible = isWifiOn;
         menu.addMenuItem(hiddenToggleItem);
 
         const hiddenDrawerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
@@ -967,6 +974,13 @@ export default class WaveTopBarExtension extends Extension {
         hiddenPassEntry.clutter_text.set_password_char('•');
         hiddenDrawerCard.add_child(hiddenPassEntry);
 
+        const hiddenStatusLabel = new St.Label({
+            text: '',
+            style_class: 'wave-wifi-item-rate',
+            visible: false,
+        });
+        hiddenDrawerCard.add_child(hiddenStatusLabel);
+
         const hiddenBtnBox = new St.BoxLayout({
             x_align: Clutter.ActorAlign.END,
             style: 'spacing: 6px; margin-top: 4px;',
@@ -980,24 +994,40 @@ export default class WaveTopBarExtension extends Extension {
         const doHiddenConnect = () => {
             const hSsid = hiddenSsidEntry.get_text().trim();
             const hPass = hiddenPassEntry.get_text();
-            if (!hSsid) return;
+            if (!hSsid) {
+                hiddenStatusLabel.text = _('Por favor ingresa un SSID');
+                hiddenStatusLabel.visible = true;
+                return;
+            }
             hiddenConnectBtn.label = _('Conectando...');
+            hiddenStatusLabel.visible = false;
             const cmd = hPass
                 ? ['nmcli', 'dev', 'wifi', 'connect', hSsid, 'password', hPass, 'hidden', 'yes']
                 : ['nmcli', 'dev', 'wifi', 'connect', hSsid, 'hidden', 'yes'];
-            this._runCommandAsync(cmd, () => {
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+            this._runCommandAsync(cmd, (out, errStr, errCode) => {
+                if (errCode || (errStr && errStr.toLowerCase().includes('error'))) {
+                    hiddenConnectBtn.label = _('Conectar');
+                    hiddenStatusLabel.text = _('Error al conectar a la red oculta');
+                    hiddenStatusLabel.visible = true;
+                } else {
+                    hiddenConnectBtn.label = _('✓ Conectado');
                     this._updateNetwork();
-                    if (this._wifiMenu === menu && menu.isOpen) {
-                        this._showWifiMenu();
-                    }
-                    return GLib.SOURCE_REMOVE;
-                });
+                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1200, () => {
+                        if (this._wifiMenu === menu && menu.isOpen) {
+                            hiddenDrawerItem.actor.visible = false;
+                            hiddenConnectBtn.label = _('Conectar');
+                            hiddenSsidEntry.set_text('');
+                            hiddenPassEntry.set_text('');
+                            updateActiveSection();
+                            this._refreshWifiNetworksList(netListBox, menu, updateActiveSection);
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
             });
         };
         hiddenSsidEntry.clutter_text.connect('activate', () => hiddenPassEntry.grab_key_focus());
         hiddenPassEntry.clutter_text.connect('activate', () => doHiddenConnect());
-        hiddenConnectBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
         hiddenConnectBtn.connect('clicked', () => doHiddenConnect());
         hiddenBtnBox.add_child(hiddenConnectBtn);
         hiddenDrawerCard.add_child(hiddenBtnBox);
@@ -1015,14 +1045,46 @@ export default class WaveTopBarExtension extends Extension {
             }
         });
 
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        // 6. Network Settings (always at bottom)
+        const settingsSep = new PopupMenu.PopupSeparatorMenuItem();
+        menu.addMenuItem(settingsSep);
 
-        // Network Settings
         const settingsItem = new PopupMenu.PopupMenuItem(_('Configuración de red...'));
         settingsItem.connect('activate', () => {
             GLib.spawn_command_line_async('gnome-control-center wifi');
         });
         menu.addMenuItem(settingsItem);
+
+        // Dynamic Wi-Fi switch toggle in-place (DOES NOT CLOSE THE MENU)
+        switchItem.connect('toggled', (item, state) => {
+            if (this._nmClient) {
+                this._nmClient.wireless_enabled = state;
+            } else {
+                this._runCommandAsync(['nmcli', 'radio', 'wifi', state ? 'on' : 'off']);
+            }
+            this._updateNetwork();
+
+            offLabelItem.actor.visible = !state;
+            speedItem.actor.visible = state;
+            activeSeparator.actor.visible = state && Boolean(activeInfo && activeInfo.ssid);
+            activeItem.actor.visible = state && Boolean(activeInfo && activeInfo.ssid);
+            inlineQrItem.actor.visible = false;
+            netSeparator.actor.visible = state;
+            netHeaderItem.actor.visible = state;
+            scrollItem.actor.visible = state;
+            hiddenToggleItem.actor.visible = state;
+            hiddenDrawerItem.actor.visible = false;
+
+            if (state) {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
+                    if (this._wifiMenu === menu && menu.isOpen) {
+                        updateActiveSection();
+                        this._refreshWifiNetworksList(netListBox, menu, updateActiveSection);
+                    }
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+        });
 
         menu.connect('destroy', () => {
             if (this._wifiThroughputTimerId) {
@@ -1050,10 +1112,11 @@ export default class WaveTopBarExtension extends Extension {
             ['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', ssid],
             (stdout) => {
                 const password = (stdout || '').trim();
+                const escapeWifiQr = (s) => (s || '').replace(/([\\;,":])/g, '\\$1');
                 const secType = password ? 'WPA' : 'nopass';
                 const qrPayload = password
-                    ? `WIFI:S:${ssid};T:${secType};P:${password};;`
-                    : `WIFI:S:${ssid};T:nopass;;`;
+                    ? `WIFI:S:${escapeWifiQr(ssid)};T:${secType};P:${escapeWifiQr(password)};;`
+                    : `WIFI:S:${escapeWifiQr(ssid)};T:nopass;;`;
 
                 const scriptPath = GLib.build_filenamev([this.path, 'qr_helper.py']);
                 this._runCommandAsync(['python3', scriptPath, qrPayload], (qrOut) => {
@@ -1135,10 +1198,9 @@ export default class WaveTopBarExtension extends Extension {
                             can_focus: true,
                             track_hover: true,
                         });
-                        copyBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
                         copyBtn.connect('clicked', () => {
                             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, password);
-                            copyBtn.label = _('✓');
+                            copyBtn.label = _('✓ Copiado');
                             GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1800, () => {
                                 copyBtn.label = _('Copiar');
                                 return GLib.SOURCE_REMOVE;
@@ -1152,7 +1214,8 @@ export default class WaveTopBarExtension extends Extension {
         );
     }
 
-    _refreshWifiNetworksList(container, menu) {
+    _refreshWifiNetworksList(container, menu, onConnectedCallback) {
+        if (!container || !menu || this._wifiMenu !== menu) return;
         container.destroy_all_children();
 
         const loadingLabel = new St.Label({
@@ -1295,19 +1358,27 @@ export default class WaveTopBarExtension extends Extension {
                         connectBtn.label = _('Conectando...');
                         this._runCommandAsync(
                             ['nmcli', 'dev', 'wifi', 'connect', net.ssid, 'password', p],
-                            () => {
-                                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+                            (out, errStr, errCode) => {
+                                if (errCode || (errStr && errStr.toLowerCase().includes('error'))) {
+                                    connectBtn.label = _('Conectar');
+                                    passEntry.set_text('');
+                                    passEntry.hint_text = _('Contraseña incorrecta');
+                                } else {
+                                    connectBtn.label = _('✓ Conectado');
                                     this._updateNetwork();
-                                    if (this._wifiMenu === menu && menu.isOpen) {
-                                        this._showWifiMenu();
-                                    }
-                                    return GLib.SOURCE_REMOVE;
-                                });
+                                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1200, () => {
+                                        if (this._wifiMenu === menu && menu.isOpen) {
+                                            passDrawer.visible = false;
+                                            if (onConnectedCallback) onConnectedCallback();
+                                            this._refreshWifiNetworksList(container, menu, onConnectedCallback);
+                                        }
+                                        return GLib.SOURCE_REMOVE;
+                                    });
+                                }
                             }
                         );
                     };
                     passEntry.clutter_text.connect('activate', () => doConnect());
-                    connectBtn.connect('button-press-event', () => Clutter.EVENT_STOP);
                     connectBtn.connect('clicked', () => doConnect());
                     passDrawer.add_child(connectBtn);
                     netItemBox.add_child(passDrawer);
@@ -1318,10 +1389,11 @@ export default class WaveTopBarExtension extends Extension {
                             if (!err && stdout && stdout.trim() === net.ssid) {
                                 ssidLabel.text = `${net.ssid} (${_('Conectando...')})`;
                                 this._runCommandAsync(['nmcli', 'connection', 'up', 'id', net.ssid], () => {
-                                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
-                                        this._updateNetwork();
+                                    this._updateNetwork();
+                                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1200, () => {
                                         if (this._wifiMenu === menu && menu.isOpen) {
-                                            this._showWifiMenu();
+                                            if (onConnectedCallback) onConnectedCallback();
+                                            this._refreshWifiNetworksList(container, menu, onConnectedCallback);
                                         }
                                         return GLib.SOURCE_REMOVE;
                                     });
@@ -1329,10 +1401,11 @@ export default class WaveTopBarExtension extends Extension {
                             } else if (!isSecured) {
                                 ssidLabel.text = `${net.ssid} (${_('Conectando...')})`;
                                 this._runCommandAsync(['nmcli', 'dev', 'wifi', 'connect', net.ssid], () => {
-                                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
-                                        this._updateNetwork();
+                                    this._updateNetwork();
+                                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1200, () => {
                                         if (this._wifiMenu === menu && menu.isOpen) {
-                                            this._showWifiMenu();
+                                            if (onConnectedCallback) onConnectedCallback();
+                                            this._refreshWifiNetworksList(container, menu, onConnectedCallback);
                                         }
                                         return GLib.SOURCE_REMOVE;
                                     });
@@ -1491,6 +1564,14 @@ export default class WaveTopBarExtension extends Extension {
 
     _registerMenu(menu) {
         menu.actor.add_style_class_name('wave-popup-menu');
+        const isLight = Boolean(this._isLightMode);
+        if (isLight) {
+            menu.actor.add_style_class_name('theme-light');
+            menu.actor.remove_style_class_name('theme-dark');
+        } else {
+            menu.actor.add_style_class_name('theme-dark');
+            menu.actor.remove_style_class_name('theme-light');
+        }
         this._menuManager.addMenu(menu);
         Main.uiGroup.add_child(menu.actor);
 
@@ -1715,6 +1796,32 @@ export default class WaveTopBarExtension extends Extension {
         const isLightMode = (r * 0.299 + g * 0.587 + b * 0.114) > 160;
         this._isLightMode = isLightMode;
         const fgColor = isLightMode ? '#161618' : '#ffffff';
+
+        if (isLightMode) {
+            this._topBar.add_style_class_name('theme-light');
+            this._topBar.remove_style_class_name('theme-dark');
+            if (this._contentBox) {
+                this._contentBox.add_style_class_name('theme-light');
+                this._contentBox.remove_style_class_name('theme-dark');
+            }
+        } else {
+            this._topBar.add_style_class_name('theme-dark');
+            this._topBar.remove_style_class_name('theme-light');
+            if (this._contentBox) {
+                this._contentBox.add_style_class_name('theme-dark');
+                this._contentBox.remove_style_class_name('theme-light');
+            }
+        }
+
+        if (this._wifiMenu && this._wifiMenu.isOpen) {
+            if (isLightMode) {
+                this._wifiMenu.actor.add_style_class_name('theme-light');
+                this._wifiMenu.actor.remove_style_class_name('theme-dark');
+            } else {
+                this._wifiMenu.actor.add_style_class_name('theme-dark');
+                this._wifiMenu.actor.remove_style_class_name('theme-light');
+            }
+        }
 
         // macOS Acrylic Glassmorphism styling (clean bottom separation border only, no top highlights)
         const borderColor = isLightMode ? 'rgba(0, 0, 0, 0.10)' : 'rgba(255, 255, 255, 0.14)';

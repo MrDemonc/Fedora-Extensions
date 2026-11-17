@@ -276,10 +276,67 @@
     color: #ffffff;
 }
 
+/* --- TOPBAR LIGHT / DARK THEME ADAPTATION --- */
+.wave-topbar.theme-light,
+.wave-topbar-content.theme-light {
+    color: #161618 !important;
+}
+
+.wave-topbar.theme-light StLabel,
+.wave-topbar-content.theme-light StLabel,
+.wave-topbar.theme-light .wave-topbar-label,
+.wave-topbar-content.theme-light .wave-topbar-label,
+.wave-topbar.theme-light .wave-topbar-app-name,
+.wave-topbar.theme-light .wave-topbar-clock-btn,
+.wave-topbar.theme-light .wave-topbar-battery-label {
+    color: #161618 !important;
+}
+
+.wave-topbar.theme-light StIcon,
+.wave-topbar-content.theme-light StIcon,
+.wave-topbar.theme-light .wave-topbar-icon,
+.wave-topbar-content.theme-light .wave-topbar-icon,
+.wave-topbar.theme-light .wave-topbar-small-icon,
+.wave-topbar-content.theme-light .wave-topbar-small-icon {
+    color: #161618 !important;
+}
+
+.wave-topbar.theme-light .wave-topbar-btn:active,
+.wave-topbar.theme-light .wave-topbar-btn:checked {
+    opacity: 0.65 !important;
+}
+
+.wave-topbar.theme-dark,
+.wave-topbar-content.theme-dark {
+    color: #ffffff !important;
+}
+
+.wave-topbar.theme-dark StLabel,
+.wave-topbar-content.theme-dark StLabel,
+.wave-topbar.theme-dark .wave-topbar-label,
+.wave-topbar-content.theme-dark .wave-topbar-label,
+.wave-topbar.theme-dark .wave-topbar-app-name,
+.wave-topbar.theme-dark .wave-topbar-clock-btn,
+.wave-topbar.theme-dark .wave-topbar-battery-label {
+    color: #ffffff !important;
+}
+
+.wave-topbar.theme-dark StIcon,
+.wave-topbar-content.theme-dark StIcon,
+.wave-topbar.theme-dark .wave-topbar-icon,
+.wave-topbar-content.theme-dark .wave-topbar-icon,
+.wave-topbar.theme-dark .wave-topbar-small-icon,
+.wave-topbar-content.theme-dark .wave-topbar-small-icon {
+    color: #ffffff !important;
+}
+
 /* Custom Wi-Fi Menu Styles */
-.wave-wifi-menu {
-    min-width: 320px;
-    max-width: 370px;
+.wave-wifi-menu,
+.wave-wifi-menu.popup-menu,
+.wave-wifi-menu .popup-menu-content {
+    width: 330px !important;
+    min-width: 330px !important;
+    max-width: 330px !important;
 }
 
 /* Speed / Throughput Card (Minimalist) */
@@ -293,6 +350,7 @@
 .wave-wifi-speed-value {
     font-size: 11px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: #e5e5ea;
 }
 
@@ -430,7 +488,7 @@
     margin: 2px 0;
 }
 
-/* --- LIGHT MODE ADAPTATION --- */
+/* --- POPUP MENUS: LIGHT MODE ADAPTATION --- */
 .wave-popup-menu.theme-light,
 .wave-wifi-menu.theme-light {
     background-color: rgba(246, 246, 248, 0.96) !important;
@@ -439,29 +497,60 @@
     border: 1px solid rgba(0, 0, 0, 0.12) !important;
 }
 
+.wave-popup-menu.theme-light StLabel,
+.wave-wifi-menu.theme-light StLabel {
+    color: #1c1c1e !important;
+}
+
+.wave-popup-menu.theme-light StIcon,
+.wave-wifi-menu.theme-light StIcon,
+.wave-wifi-menu.theme-light .wave-topbar-icon {
+    color: #1c1c1e !important;
+}
+
+.wave-popup-menu.theme-light .popup-menu-item,
 .wave-wifi-menu.theme-light .popup-menu-item {
     color: #1c1c1e !important;
 }
 
+.wave-popup-menu.theme-light .popup-menu-item:hover,
+.wave-popup-menu.theme-light .popup-menu-item:active,
+.wave-popup-menu.theme-light .popup-menu-item:focus,
+.wave-wifi-menu.theme-light .popup-menu-item:hover,
+.wave-wifi-menu.theme-light .popup-menu-item:active,
+.wave-wifi-menu.theme-light .popup-menu-item:focus {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+    color: #1c1c1e !important;
+}
+
+.wave-popup-menu.theme-light .popup-separator-menu-item,
+.wave-wifi-menu.theme-light .popup-separator-menu-item,
+.wave-popup-menu.theme-light .popup-separator-menu-item-separator,
+.wave-wifi-menu.theme-light .popup-separator-menu-item-separator {
+    background-color: rgba(0, 0, 0, 0.10) !important;
+    border-color: rgba(0, 0, 0, 0.10) !important;
+}
+
 .wave-wifi-menu.theme-light .wave-wifi-speed-card {
     background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-speed-value {
-    color: #1c1c1e;
+    color: #1c1c1e !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-item-name {
-    color: #1c1c1e;
+    color: #1c1c1e !important;
 }
 
-.wave-wifi-menu.theme-light .wave-wifi-item-name-active {
-    color: #0071e3;
-    font-weight: 700;
+.wave-wifi-menu.theme-light .wave-wifi-item-name-active,
+.wave-wifi-menu.theme-light .wave-wifi-item-active-icon {
+    color: #0071e3 !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-net-row {
-    color: #1c1c1e;
+    color: #1c1c1e !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-net-row:hover {
@@ -474,7 +563,7 @@
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-section-title {
-    color: #636366;
+    color: #636366 !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-icon-btn:hover {
@@ -483,7 +572,7 @@
 
 .wave-wifi-menu.theme-light .wave-wifi-btn-compact {
     background-color: rgba(0, 0, 0, 0.08);
-    color: #1c1c1e;
+    color: #1c1c1e !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-btn-compact:hover {
@@ -505,15 +594,55 @@
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-pass-label {
-    color: #1c1c1e;
+    color: #1c1c1e !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-entry {
     background-color: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    color: #1c1c1e;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    color: #1c1c1e !important;
+}
+
+.wave-wifi-menu.theme-light .wave-wifi-entry StLabel {
+    color: #8e8e93 !important;
 }
 
 .wave-wifi-menu.theme-light .wave-wifi-item-rate {
-    color: #636366;
+    color: #636366 !important;
+}
+
+/* --- POPUP MENUS: DARK MODE --- */
+.wave-popup-menu.theme-dark,
+.wave-wifi-menu.theme-dark,
+.wave-popup-menu,
+.wave-wifi-menu {
+    background-color: rgba(28, 28, 32, 0.96) !important;
+    color: #ffffff !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.wave-popup-menu.theme-dark StLabel,
+.wave-wifi-menu.theme-dark StLabel {
+    color: #ffffff;
+}
+
+.wave-popup-menu.theme-dark StIcon,
+.wave-wifi-menu.theme-dark StIcon,
+.wave-wifi-menu.theme-dark .wave-topbar-icon {
+    color: #ffffff;
+}
+
+.wave-popup-menu.theme-dark .popup-menu-item:hover,
+.wave-wifi-menu.theme-dark .popup-menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+
+.wave-popup-menu.theme-dark .popup-separator-menu-item,
+.wave-wifi-menu.theme-dark .popup-separator-menu-item,
+.wave-popup-menu.theme-dark .popup-separator-menu-item-separator,
+.wave-wifi-menu.theme-dark .popup-separator-menu-item-separator {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
 }

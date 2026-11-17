@@ -297,12 +297,12 @@ export default class MacWaveDockExtension extends Extension {
         // Listen to system color-scheme changes for auto dark/light theme
         this._interfaceSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' });
         this._interfaceSettings.connectObject(
-            'changed::color-scheme', () => this._updateDockTheme(),
+            'changed::color-scheme', () => this._buildDock(),
             this
         );
         try {
             St.Settings.get().connectObject(
-                'notify::color-scheme', () => this._updateDockTheme(),
+                'notify::color-scheme', () => this._buildDock(),
                 this
             );
         } catch (e) {
@@ -343,11 +343,10 @@ export default class MacWaveDockExtension extends Extension {
                 this._updateDockTheme();
             },
             'changed::dock-color', () => {
-                this._updateDockTheme();
-                this._updateRunningDots();
+                this._buildDock();
             },
             'changed::dock-custom-color', () => {
-                this._updateDockTheme();
+                this._buildDock();
             },
             'changed::dock-opacity', () => {
                 this._updateDockTheme();
