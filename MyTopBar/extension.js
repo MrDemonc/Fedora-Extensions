@@ -792,7 +792,7 @@ export default class WaveTopBarExtension extends Extension {
         speedCard.add_child(speedHeaderBox);
 
         // Throughput & Link rate
-        const speedValBox = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER, spacing: 6 });
+        const speedValBox = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER, style: 'spacing: 6px;' });
         const txRxIcon = new St.Icon({
             icon_name: 'network-transmit-receive-symbolic',
             fallback_icon_name: 'network-wireless-symbolic',
@@ -811,7 +811,7 @@ export default class WaveTopBarExtension extends Extension {
         speedCard.add_child(speedValBox);
 
         // Speed test row
-        const testRow = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER, spacing: 8 });
+        const testRow = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER, style: 'spacing: 8px;' });
         const testResultLabel = new St.Label({
             text: _('Test de velocidad rápido:'),
             style_class: 'wave-wifi-speed-sub',
@@ -1389,8 +1389,7 @@ export default class WaveTopBarExtension extends Extension {
 
         const btnBox = new St.BoxLayout({
             x_align: Clutter.ActorAlign.END,
-            spacing: 8,
-            style: 'margin-top: 8px;',
+            style: 'margin-top: 8px; spacing: 8px;',
         });
         const cancelBtn = new St.Button({
             label: _('Cancelar'),
@@ -1508,8 +1507,7 @@ export default class WaveTopBarExtension extends Extension {
 
         const btnBox = new St.BoxLayout({
             x_align: Clutter.ActorAlign.END,
-            spacing: 8,
-            style: 'margin-top: 8px;',
+            style: 'margin-top: 8px; spacing: 8px;',
         });
         const cancelBtn = new St.Button({
             label: _('Cancelar'),
