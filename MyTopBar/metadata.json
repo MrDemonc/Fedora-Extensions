@@ -1,6 +1,6 @@
 {
   "name": "MyTopBar",
-  "description": "Barra superior moderna y elegante con menú de sistema, título de aplicación activa, calendario integrado, centro de control y estética translúcida.",
+  "description": "Modern and elegant top bar with system menu, active application title, integrated calendar, control center, and translucent acrylic aesthetics.",
   "uuid": "MyTopBar@demonc",
   "shell-version": [
     "45",

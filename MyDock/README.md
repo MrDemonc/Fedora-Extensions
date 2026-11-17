@@ -1,17 +1,17 @@
 # MyDock 🌊
 
-Dock inferior compacto para GNOME Shell 45-51 con animación fluida de magnificación en ola al estilo de macOS.
+Compact bottom dock for GNOME Shell 45–51 featuring fluid wave magnification on hover in the style of macOS.
 
-## 🚀 Características
-- **Animación de Ola Fluida (Wave)**: Magnificación interactiva y reactiva en tiempo real sin retrasos.
-- **Tema Automático**: Adaptación dinámica entre cristal claro y oscuro según el modo de GNOME.
-- **Auto-ocultamiento Inteligente**: Detección precisa de borde para pantallas completas y ventanas maximizadas.
-- **Cajón de Aplicaciones**: Lanzador integrado de la cuadrícula de GNOME.
-- **Apps Favoritas y en Ejecución**: Puntos indicadores de apps activas con soporte para minimizar/restaurar y cerrar.
-- **Dispositivos Extraíbles**: Detección y desmontaje rápido de pendrives y particiones.
-- **Papelera Dinámica**: Estado vacío/lleno en tiempo real con apertura directa.
+## 🚀 Key Features
+- **Fluid Wave Magnification**: Smooth, continuous, and responsive cursor hover zoom animation.
+- **Automatic Theme Detection**: Dynamic frosted acrylic styling adjusting between dark and light modes.
+- **Smart Auto-Hide**: Edge proximity detection (`pointerTracker`) to automatically hide in fullscreen or maximized windows.
+- **Applications Grid Drawer**: Integrated launcher button to reveal the GNOME application grid.
+- **Pinned & Running Applications**: Running status indicators with click actions to minimize, restore, or focus windows.
+- **Removable Media & Volumes**: Automatic detection of mounted drives and USB storage with safe unmount/eject actions.
+- **Dynamic Trash Can**: Real-time empty/full status with click to open trash in file manager.
 
-## ⚙️ Preferencias
+## ⚙️ Preferences
 ```bash
 gnome-extensions prefs MyDock@demonc
 ```

@@ -1,6 +1,6 @@
 {
   "name": "MyDock",
-  "description": "Dock al estilo de macOS compacto con animación de ola al pasar el ratón, soporte para minimizar y maximizar aplicaciones, reordenamiento, papelera y reemplazo del dash de GNOME.",
+  "description": "Compact macOS-style dock with fluid wave magnification on hover, application state dots, window management, trash bin, and GNOME dash replacement.",
   "uuid": "MyDock@demonc",
   "shell-version": [
     "45",

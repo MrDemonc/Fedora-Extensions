@@ -30,7 +30,7 @@ RESET="\033[0m"
 # Remote execution handler (curl ... | bash)
 handle_remote_mode() {
     if [ ! -d "$SCRIPT_DIR/MyTopBar" ] || [ ! -d "$SCRIPT_DIR/MyDock" ]; then
-        echo -e "${CYAN}[*] Modo remoto detectado. Descargando archivos de Demonc-extencions...${RESET}"
+        echo -e "${CYAN}[*] Remote execution detected. Fetching Demonc-extencions source files...${RESET}"
         TMP_DIR=$(mktemp -d /tmp/demonc-ext.XXXXXX)
         trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
@@ -45,24 +45,24 @@ handle_remote_mode() {
         fi
 
         if [ "$CLONED" -eq 0 ]; then
-            echo -e "${CYAN}[*] Descargando archivo fuente desde GitHub...${RESET}"
+            echo -e "${CYAN}[*] Downloading source tarball from GitHub...${RESET}"
             curl -fsSL "$REPO_URL/archive/refs/heads/main.tar.gz" | tar -xz -C "$TMP_DIR"
             EXTRACTED_DIR=$(find "$TMP_DIR" -maxdepth 1 -type d -name "Demonc-extencions-*" | head -n 1)
             if [ -n "$EXTRACTED_DIR" ] && [ -d "$EXTRACTED_DIR" ]; then
                 SCRIPT_DIR="$EXTRACTED_DIR"
             else
-                echo -e "${YELLOW}Error: No se pudieron descargar los componentes de la extensión.${RESET}"
+                echo -e "${YELLOW}Error: Could not download extension components from repository.${RESET}"
                 exit 1
             fi
         fi
-        echo -e "${GREEN}[✓] Archivos descargados correctamente.${RESET}\n"
+        echo -e "${GREEN}[✓] Source files downloaded successfully.${RESET}\n"
     fi
 }
 
 print_banner() {
     echo -e "${BLUE}${BOLD}"
     echo "=========================================================="
-    echo "          Demonc Extensions Suite - Instalador            "
+    echo "          Demonc Extensions Suite - Installer             "
     echo "                  (MyTopBar & MyDock)                     "
     echo "=========================================================="
     echo -e "${RESET}"
@@ -78,9 +78,11 @@ try:
     if '$uuid' not in lst:
         lst.append('$uuid')
         subprocess.check_call(['gsettings', 'set', 'org.gnome.shell', 'enabled-extensions', str(lst)])
-        print('    [+] Extensión habilitada en org.gnome.shell.enabled-extensions ($uuid).')
+        print('    [+] Extension enabled in org.gnome.shell.enabled-extensions ($uuid).')
+    else:
+        print('    [*] Extension was already enabled in enabled-extensions.')
 except Exception as e:
-    print('    [!] Advertencia modificando gsettings:', e)
+    print('    [!] Warning updating gsettings:', e)
 " 2>/dev/null || true
 }
 
@@ -100,25 +102,25 @@ except Exception:
 }
 
 install_topbar() {
-    echo -e "${CYAN}${BOLD}--> Instalando MyTopBar ($TOPBAR_UUID)...${RESET}"
+    echo -e "${CYAN}${BOLD}--> Installing MyTopBar ($TOPBAR_UUID)...${RESET}"
     local src="$SCRIPT_DIR/MyTopBar"
     local dest="$EXT_DIR/$TOPBAR_UUID"
 
     if [ ! -d "$src" ]; then
-        echo -e "${YELLOW}Error: No se encontró el directorio $src${RESET}"
+        echo -e "${YELLOW}Error: Directory not found: $src${RESET}"
         return 1
     fi
 
-    echo "    1. Compilando esquemas GSettings..."
+    echo "    1. Compiling GSettings schemas..."
     glib-compile-schemas "$src/schemas"
 
-    echo "    2. Instalando archivos de la extensión..."
+    echo "    2. Installing extension files to $dest..."
     mkdir -p "$EXT_DIR"
     rm -rf "$dest"
     mkdir -p "$dest"
     cp -r "$src"/* "$dest/"
 
-    # Compatibilidad en vivo con sesión actual de Wayland
+    # Hot compatibility with active Wayland session
     local compat_dest="$EXT_DIR/$OLD_TOPBAR_UUID"
     rm -rf "$compat_dest"
     mkdir -p "$compat_dest"
@@ -130,33 +132,33 @@ install_topbar() {
         glib-compile-schemas "$compat_dest/schemas"
     fi
 
-    echo "    3. Habilitando en GNOME Shell..."
+    echo "    3. Enabling in GNOME Shell..."
     enable_in_gsettings "$TOPBAR_UUID"
     enable_in_gsettings "$OLD_TOPBAR_UUID"
 
-    echo "    4. Recargando extensión en tiempo real..."
+    echo "    4. Reloading extension in real time..."
     gnome-extensions disable "$OLD_TOPBAR_UUID" 2>/dev/null || true
     sleep 0.5
     gnome-extensions enable "$OLD_TOPBAR_UUID" 2>/dev/null || true
     gnome-extensions enable "$TOPBAR_UUID" 2>/dev/null || true
 
-    echo -e "${GREEN}    ✓ MyTopBar instalado y activo con éxito.${RESET}\n"
+    echo -e "${GREEN}    ✓ MyTopBar successfully installed and activated.${RESET}\n"
 }
 
 install_dock() {
-    echo -e "${CYAN}${BOLD}--> Instalando MyDock ($DOCK_UUID)...${RESET}"
+    echo -e "${CYAN}${BOLD}--> Installing MyDock ($DOCK_UUID)...${RESET}"
     local src="$SCRIPT_DIR/MyDock"
     local dest="$EXT_DIR/$DOCK_UUID"
 
     if [ ! -d "$src" ]; then
-        echo -e "${YELLOW}Error: No se encontró el directorio $src${RESET}"
+        echo -e "${YELLOW}Error: Directory not found: $src${RESET}"
         return 1
     fi
 
-    echo "    1. Compilando esquemas GSettings..."
+    echo "    1. Compiling GSettings schemas..."
     glib-compile-schemas "$src/schemas"
 
-    echo "    2. Instalando archivos de la extensión..."
+    echo "    2. Installing extension files to $dest..."
     mkdir -p "$EXT_DIR"
     rm -rf "$dest"
     mkdir -p "$dest"
@@ -168,7 +170,7 @@ install_dock() {
           "$src/schemas" \
           "$dest/"
 
-    # Compatibilidad en vivo con sesión actual de Wayland
+    # Hot compatibility with active Wayland session
     local compat_dest="$EXT_DIR/$OLD_DOCK_UUID"
     rm -rf "$compat_dest"
     mkdir -p "$compat_dest"
@@ -180,27 +182,27 @@ install_dock() {
         glib-compile-schemas "$compat_dest/schemas"
     fi
 
-    echo "    3. Habilitando en GNOME Shell..."
+    echo "    3. Enabling in GNOME Shell..."
     enable_in_gsettings "$DOCK_UUID"
     enable_in_gsettings "$OLD_DOCK_UUID"
 
-    echo "    4. Recargando extensión en tiempo real..."
+    echo "    4. Reloading extension in real time..."
     gnome-extensions disable "$OLD_DOCK_UUID" 2>/dev/null || true
     sleep 0.5
     gnome-extensions enable "$OLD_DOCK_UUID" 2>/dev/null || true
     gnome-extensions enable "$DOCK_UUID" 2>/dev/null || true
 
-    echo -e "${GREEN}    ✓ MyDock instalado y activo con éxito.${RESET}\n"
+    echo -e "${GREEN}    ✓ MyDock successfully installed and activated.${RESET}\n"
 }
 
 uninstall_extensions() {
-    echo -e "${YELLOW}${BOLD}--> Desinstalando extensiones...${RESET}"
+    echo -e "${YELLOW}${BOLD}--> Uninstalling extensions...${RESET}"
     for uuid in "$TOPBAR_UUID" "$DOCK_UUID" "$OLD_TOPBAR_UUID" "$OLD_DOCK_UUID"; do
         gnome-extensions disable "$uuid" 2>/dev/null || true
         remove_from_gsettings "$uuid"
         rm -rf "$EXT_DIR/$uuid"
     done
-    echo -e "${GREEN}✓ Ambas extensiones han sido desinstaladas correctamente.${RESET}"
+    echo -e "${GREEN}✓ Both extensions have been successfully uninstalled.${RESET}"
 }
 
 # --- Main Flow ---
@@ -211,19 +213,19 @@ ACTION="$1"
 
 # If no argument provided, show interactive menu
 if [ -z "$ACTION" ]; then
-    echo -e "${BOLD}¿Qué deseas hacer?${RESET}"
-    echo "  1) Instalar ambas extensiones (MyTopBar + MyDock) [Recomendado]"
-    echo "  2) Instalar únicamente MyTopBar (Barra superior)"
-    echo "  3) Instalar únicamente MyDock (Dock inferior)"
-    echo "  4) Desinstalar extensiones"
-    echo "  5) Salir"
+    echo -e "${BOLD}What would you like to do?${RESET}"
+    echo "  1) Install both extensions (MyTopBar + MyDock) [Recommended]"
+    echo "  2) Install MyTopBar only (Top bar)"
+    echo "  3) Install MyDock only (Bottom dock)"
+    echo "  4) Uninstall extensions"
+    echo "  5) Exit"
     echo ""
 
     # Read from /dev/tty if available (vital when invoked via `curl ... | bash`)
     if [ -t 0 ]; then
-        read -r -p "Selecciona una opción [1-5] (por defecto 1): " USER_CHOICE
+        read -r -p "Select an option [1-5] (default 1): " USER_CHOICE
     elif [ -e /dev/tty ]; then
-        read -r -p "Selecciona una opción [1-5] (por defecto 1): " USER_CHOICE < /dev/tty
+        read -r -p "Select an option [1-5] (default 1): " USER_CHOICE < /dev/tty
     else
         USER_CHOICE="1"
     fi
@@ -239,14 +241,14 @@ if [ -z "$ACTION" ]; then
             ACTION="uninstall"
             ;;
         5|q|Q)
-            echo "Operación cancelada."
+            echo "Operation cancelled."
             exit 0
             ;;
         1|"")
             ACTION="all"
             ;;
         *)
-            echo -e "${YELLOW}Opción no válida. Instalando ambas extensiones por defecto...${RESET}"
+            echo -e "${YELLOW}Invalid option. Installing both extensions by default...${RESET}"
             ACTION="all"
             ;;
     esac
@@ -268,23 +270,23 @@ case "$ACTION" in
         exit 0
         ;;
     *)
-        echo "Uso: $0 [all|topbar|dock|uninstall]"
+        echo "Usage: $0 [all|topbar|dock|uninstall]"
         echo ""
-        echo "Opciones:"
-        echo "  1, all        Instala ambas extensiones (MyTopBar + MyDock)"
-        echo "  2, topbar     Instala únicamente MyTopBar"
-        echo "  3, dock       Instala únicamente MyDock"
-        echo "  4, uninstall  Desinstala ambas extensiones"
+        echo "Options:"
+        echo "  1, all        Install both extensions (MyTopBar + MyDock)"
+        echo "  2, topbar     Install MyTopBar only"
+        echo "  3, dock       Install MyDock only"
+        echo "  4, uninstall  Uninstall both extensions"
         exit 1
         ;;
 esac
 
 echo -e "${GREEN}${BOLD}=========================================================="
-echo "  ¡Proceso completado con éxito!"
+echo "  Installation completed successfully!"
 echo -e "==========================================================${RESET}"
-echo "Ambas extensiones están activas en tiempo real (NO es necesario reiniciar sesión)."
+echo "Both extensions are active in real time (NO need to log out)."
 echo ""
-echo "Para abrir los paneles de configuración:"
+echo "To open preferences anytime:"
 echo "  gnome-extensions prefs $TOPBAR_UUID"
 echo "  gnome-extensions prefs $DOCK_UUID"
 echo "=========================================================="
