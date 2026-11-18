@@ -464,10 +464,20 @@
     padding: 2px;
 }
 
-/* Volume Slider & Bin Styling */
+/* Volume Slider & Audio Icons */
 .wave-volume-menu .slider-bin {
-    padding: 4px 0;
+    padding: 2px 0;
     min-width: 140px;
+}
+
+.wave-volume-icon,
+.wave-audio-dev-icon {
+    icon-size: 16px;
+    -st-icon-style: symbolic !important;
+}
+
+.wave-volume-menu StIcon {
+    -st-icon-style: symbolic !important;
 }
 
 .wave-volume-menu .slider {
@@ -698,6 +708,45 @@
     color: #636366 !important;
 }
 
+/* Volume Menu: Light Theme */
+.wave-volume-menu.theme-light StIcon,
+.wave-volume-menu-content.theme-light StIcon,
+.wave-volume-menu.theme-light .wave-volume-icon,
+.wave-volume-menu.theme-light .wave-audio-dev-icon,
+.wave-volume-menu.theme-light .wave-topbar-icon,
+.wave-volume-menu.theme-light .wave-wifi-icon-btn StIcon,
+.wave-volume-menu.theme-light .wave-wifi-net-row StIcon {
+    color: #1c1c1e !important;
+    opacity: 1.0 !important;
+}
+
+.wave-volume-menu.theme-light .wave-volume-icon.wave-wifi-item-active-icon,
+.wave-volume-menu.theme-light .wave-audio-dev-icon.wave-wifi-item-active-icon,
+.wave-volume-menu.theme-light .wave-wifi-net-row .wave-wifi-item-active-icon {
+    color: #0071e3 !important;
+}
+
+.wave-volume-menu.theme-light .wave-wifi-item-rate {
+    color: #5c5c60 !important;
+}
+
+.wave-volume-menu.theme-light .slider,
+.wave-popup-menu.theme-light .slider,
+.wave-popup-menu-content.theme-light .slider {
+    color: #1c1c1e !important;
+    -barlevel-height: 4px;
+    -barlevel-background-color: rgba(0, 0, 0, 0.15) !important;
+    -barlevel-active-background-color: #0071e3 !important;
+    -slider-handle-radius: 6px;
+}
+
+.wave-volume-menu.theme-light .slider:hover,
+.wave-popup-menu.theme-light .slider:hover,
+.wave-popup-menu-content.theme-light .slider:hover {
+    color: #000000 !important;
+    -barlevel-active-background-color: #0077ed !important;
+}
+
 /* --- POPUP MENUS: DARK MODE --- */
 .wave-popup-menu.theme-dark .popup-menu-content,
 .wave-popup-menu-content.theme-dark,
@@ -879,4 +928,43 @@
 
 .wave-wifi-menu.theme-dark .wave-wifi-item-rate {
     color: #8e8e98 !important;
+}
+
+/* Volume Menu: Dark Theme */
+.wave-volume-menu.theme-dark StIcon,
+.wave-volume-menu-content.theme-dark StIcon,
+.wave-volume-menu.theme-dark .wave-volume-icon,
+.wave-volume-menu.theme-dark .wave-audio-dev-icon,
+.wave-volume-menu.theme-dark .wave-topbar-icon,
+.wave-volume-menu.theme-dark .wave-wifi-icon-btn StIcon,
+.wave-volume-menu.theme-dark .wave-wifi-net-row StIcon {
+    color: #ffffff !important;
+    opacity: 1.0 !important;
+}
+
+.wave-volume-menu.theme-dark .wave-volume-icon.wave-wifi-item-active-icon,
+.wave-volume-menu.theme-dark .wave-audio-dev-icon.wave-wifi-item-active-icon,
+.wave-volume-menu.theme-dark .wave-wifi-net-row .wave-wifi-item-active-icon {
+    color: #0a84ff !important;
+}
+
+.wave-volume-menu.theme-dark .wave-wifi-item-rate {
+    color: #8e8e98 !important;
+}
+
+.wave-volume-menu.theme-dark .slider,
+.wave-popup-menu.theme-dark .slider,
+.wave-popup-menu-content.theme-dark .slider {
+    color: #ffffff !important;
+    -barlevel-height: 4px;
+    -barlevel-background-color: rgba(255, 255, 255, 0.18) !important;
+    -barlevel-active-background-color: #0a84ff !important;
+    -slider-handle-radius: 6px;
+}
+
+.wave-volume-menu.theme-dark .slider:hover,
+.wave-popup-menu.theme-dark .slider:hover,
+.wave-popup-menu-content.theme-dark .slider:hover {
+    color: #ffffff !important;
+    -barlevel-active-background-color: #38a5ff !important;
 }

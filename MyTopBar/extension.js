@@ -2022,6 +2022,28 @@ export default class WaveTopBarExtension extends Extension {
         Main.osdWindowManager.showAll(new Gio.ThemedIcon({ name: iconName }), null, next, 1.0);
     }
 
+    _getSymbolicGIcon(origGicon, fallbackName) {
+        if (origGicon instanceof Gio.ThemedIcon) {
+            const names = origGicon.get_names();
+            const symNames = [];
+            for (const n of names) {
+                if (n.endsWith('-symbolic')) {
+                    symNames.push(n);
+                } else {
+                    symNames.push(`${n}-symbolic`);
+                }
+            }
+            for (const n of names) {
+                if (!symNames.includes(n))
+                    symNames.push(n);
+            }
+            return new Gio.ThemedIcon({ names: symNames });
+        }
+        if (origGicon)
+            return origGicon;
+        return fallbackName ? new Gio.ThemedIcon({ name: fallbackName }) : null;
+    }
+
     _toggleVolumeMenu() {
         if (this._volumeMenu && this._volumeMenu.isOpen) {
             this._volumeMenu.close();
@@ -2046,6 +2068,8 @@ export default class WaveTopBarExtension extends Extension {
                 this._inputDevicesBox = null;
                 this._outputToggleLabel = null;
                 this._inputToggleLabel = null;
+                this._outputToggleIcon = null;
+                this._inputToggleIcon = null;
                 this._outputSlider = null;
                 this._inputSlider = null;
                 this._outputPercentLabel = null;
@@ -2067,13 +2091,12 @@ export default class WaveTopBarExtension extends Extension {
         outputHeaderItem.add_child(outputHeaderBox);
         menu.addMenuItem(outputHeaderItem);
 
-        // 2. Output Section: Volume Slider Card
-        const outputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-        const outputCard = new St.BoxLayout({
-            style_class: 'wave-wifi-inline-card',
+        // 2. Output Section: Volume Slider Row (Inline, unboxed)
+        const outputSliderItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        const outputSliderRow = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 8px; padding: 6px 10px;',
+            style: 'spacing: 8px; padding: 2px 8px; margin: 0 4px;',
         });
 
         const outputMuteBtn = new St.Button({
@@ -2089,8 +2112,8 @@ export default class WaveTopBarExtension extends Extension {
 
         this._outputMuteIcon = new St.Icon({
             icon_name: this._getVolumeIconName(outputFraction, isSinkMuted),
-            icon_size: 14,
-            style_class: 'wave-topbar-icon',
+            icon_size: 16,
+            style_class: 'wave-volume-icon',
             y_align: Clutter.ActorAlign.CENTER,
         });
         outputMuteBtn.set_child(this._outputMuteIcon);
@@ -2099,7 +2122,7 @@ export default class WaveTopBarExtension extends Extension {
             if (!curSink) return;
             curSink.change_is_muted(!curSink.is_muted);
         });
-        outputCard.add_child(outputMuteBtn);
+        outputSliderRow.add_child(outputMuteBtn);
 
         this._outputSlider = new Slider(outputFraction);
         this._outputSlider.x_expand = true;
@@ -2139,18 +2162,18 @@ export default class WaveTopBarExtension extends Extension {
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        outputCard.add_child(outputSliderBin);
+        outputSliderRow.add_child(outputSliderBin);
 
         this._outputPercentLabel = new St.Label({
             text: `${Math.round(outputFraction * 100)}%`,
             style_class: 'wave-wifi-item-rate',
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'min-width: 38px; text-align: right;',
+            style: 'min-width: 36px; text-align: right;',
         });
-        outputCard.add_child(this._outputPercentLabel);
+        outputSliderRow.add_child(this._outputPercentLabel);
 
-        outputCardItem.add_child(outputCard);
-        menu.addMenuItem(outputCardItem);
+        outputSliderItem.add_child(outputSliderRow);
+        menu.addMenuItem(outputSliderItem);
 
         // 3. Output Section: Collapsible Devices Drawer (Compressed)
         const curSinkDev = sink ? this._audioControl.lookup_output_id(sink.get_id()) : null;
@@ -2162,19 +2185,20 @@ export default class WaveTopBarExtension extends Extension {
             can_focus: true,
             track_hover: true,
             x_expand: true,
-            style: 'padding: 5px 8px; margin: 0 4px;',
+            style: 'padding: 5px 8px; margin: 0 4px; border-radius: 6px;',
         });
         const outputToggleBox = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style: 'spacing: 8px;',
         });
-        const outputToggleIcon = new St.Icon({
-            icon_name: 'audio-speakers-symbolic',
-            icon_size: 13,
-            style_class: 'wave-topbar-icon',
+        this._outputToggleIcon = new St.Icon({
+            icon_size: 16,
+            style_class: 'wave-volume-icon',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._outputToggleIcon.gicon = this._getSymbolicGIcon(curSinkDev?.get_gicon(), 'audio-speakers-symbolic');
+
         this._outputToggleLabel = new St.Label({
             text: _('Salida: %s').format(curSinkName),
             style_class: 'wave-wifi-item-name',
@@ -2186,7 +2210,7 @@ export default class WaveTopBarExtension extends Extension {
             style_class: 'wave-wifi-item-rate',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        outputToggleBox.add_child(outputToggleIcon);
+        outputToggleBox.add_child(this._outputToggleIcon);
         outputToggleBox.add_child(this._outputToggleLabel);
         outputToggleBox.add_child(outputArrowLabel);
         outputToggleBtn.set_child(outputToggleBox);
@@ -2227,13 +2251,12 @@ export default class WaveTopBarExtension extends Extension {
         inputHeaderItem.add_child(inputHeaderBox);
         menu.addMenuItem(inputHeaderItem);
 
-        // 6. Input Section: Mic Volume Slider Card
-        const inputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-        const inputCard = new St.BoxLayout({
-            style_class: 'wave-wifi-inline-card',
+        // 6. Input Section: Mic Volume Slider Row (Inline, unboxed)
+        const inputSliderItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        const inputSliderRow = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 8px; padding: 6px 10px;',
+            style: 'spacing: 8px; padding: 2px 8px; margin: 0 4px;',
         });
 
         const inputMuteBtn = new St.Button({
@@ -2248,8 +2271,8 @@ export default class WaveTopBarExtension extends Extension {
 
         this._inputMuteIcon = new St.Icon({
             icon_name: this._getMicIconName(inputFraction, isSourceMuted),
-            icon_size: 14,
-            style_class: 'wave-topbar-icon',
+            icon_size: 16,
+            style_class: 'wave-volume-icon',
             y_align: Clutter.ActorAlign.CENTER,
         });
         inputMuteBtn.set_child(this._inputMuteIcon);
@@ -2258,7 +2281,7 @@ export default class WaveTopBarExtension extends Extension {
             if (!curSource) return;
             curSource.change_is_muted(!curSource.is_muted);
         });
-        inputCard.add_child(inputMuteBtn);
+        inputSliderRow.add_child(inputMuteBtn);
 
         this._inputSlider = new Slider(inputFraction);
         this._inputSlider.x_expand = true;
@@ -2297,18 +2320,18 @@ export default class WaveTopBarExtension extends Extension {
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        inputCard.add_child(inputSliderBin);
+        inputSliderRow.add_child(inputSliderBin);
 
         this._inputPercentLabel = new St.Label({
             text: `${Math.round(inputFraction * 100)}%`,
             style_class: 'wave-wifi-item-rate',
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'min-width: 38px; text-align: right;',
+            style: 'min-width: 36px; text-align: right;',
         });
-        inputCard.add_child(this._inputPercentLabel);
+        inputSliderRow.add_child(this._inputPercentLabel);
 
-        inputCardItem.add_child(inputCard);
-        menu.addMenuItem(inputCardItem);
+        inputSliderItem.add_child(inputSliderRow);
+        menu.addMenuItem(inputSliderItem);
 
         // 7. Input Section: Collapsible Devices Drawer (Compressed)
         const curSourceDev = source ? this._audioControl.lookup_input_id(source.get_id()) : null;
@@ -2320,19 +2343,20 @@ export default class WaveTopBarExtension extends Extension {
             can_focus: true,
             track_hover: true,
             x_expand: true,
-            style: 'padding: 5px 8px; margin: 0 4px;',
+            style: 'padding: 5px 8px; margin: 0 4px; border-radius: 6px;',
         });
         const inputToggleBox = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style: 'spacing: 8px;',
         });
-        const inputToggleIcon = new St.Icon({
-            icon_name: 'audio-input-microphone-symbolic',
-            icon_size: 13,
-            style_class: 'wave-topbar-icon',
+        this._inputToggleIcon = new St.Icon({
+            icon_size: 16,
+            style_class: 'wave-volume-icon',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._inputToggleIcon.gicon = this._getSymbolicGIcon(curSourceDev?.get_gicon(), 'audio-input-microphone-symbolic');
+
         this._inputToggleLabel = new St.Label({
             text: _('Entrada: %s').format(curSourceName),
             style_class: 'wave-wifi-item-name',
@@ -2344,7 +2368,7 @@ export default class WaveTopBarExtension extends Extension {
             style_class: 'wave-wifi-item-rate',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        inputToggleBox.add_child(inputToggleIcon);
+        inputToggleBox.add_child(this._inputToggleIcon);
         inputToggleBox.add_child(this._inputToggleLabel);
         inputToggleBox.add_child(inputArrowLabel);
         inputToggleBtn.set_child(inputToggleBox);
@@ -2378,8 +2402,8 @@ export default class WaveTopBarExtension extends Extension {
         const settingsIcon = new St.Icon({
             icon_name: 'emblem-system-symbolic',
             fallback_icon_name: 'preferences-system-symbolic',
-            icon_size: 13,
-            style_class: 'wave-topbar-icon',
+            icon_size: 16,
+            style_class: 'wave-volume-icon',
             y_align: Clutter.ActorAlign.CENTER,
         });
         settingsItem.insert_child_at_index(settingsIcon, 0);
@@ -2416,6 +2440,9 @@ export default class WaveTopBarExtension extends Extension {
                     const dev = this._audioControl.lookup_output_id(sink.get_id());
                     const name = dev ? dev.get_description() : sink.get_description();
                     this._outputToggleLabel.text = _('Salida: %s').format(name);
+                    if (this._outputToggleIcon) {
+                        this._outputToggleIcon.gicon = this._getSymbolicGIcon(dev?.get_gicon(), 'audio-speakers-symbolic');
+                    }
                 }
             }
 
@@ -2436,6 +2463,9 @@ export default class WaveTopBarExtension extends Extension {
                     const dev = this._audioControl.lookup_input_id(source.get_id());
                     const name = dev ? dev.get_description() : source.get_description();
                     this._inputToggleLabel.text = _('Entrada: %s').format(name);
+                    if (this._inputToggleIcon) {
+                        this._inputToggleIcon.gicon = this._getSymbolicGIcon(dev?.get_gicon(), 'audio-input-microphone-symbolic');
+                    }
                 }
             }
         } finally {
@@ -2493,15 +2523,13 @@ export default class WaveTopBarExtension extends Extension {
             });
 
             const devIcon = new St.Icon({
-                icon_size: 13,
-                style_class: 'wave-topbar-icon',
+                icon_size: 16,
+                style_class: isActive
+                    ? 'wave-volume-icon wave-audio-dev-icon wave-wifi-item-active-icon'
+                    : 'wave-volume-icon wave-audio-dev-icon',
                 y_align: Clutter.ActorAlign.CENTER,
             });
-            if (dev && dev.get_gicon()) {
-                devIcon.gicon = dev.get_gicon();
-            } else {
-                devIcon.icon_name = isOutput ? 'audio-speakers-symbolic' : 'audio-input-microphone-symbolic';
-            }
+            devIcon.gicon = this._getSymbolicGIcon(dev?.get_gicon(), isOutput ? 'audio-speakers-symbolic' : 'audio-input-microphone-symbolic');
             rowBox.add_child(devIcon);
 
             const nameLabel = new St.Label({
@@ -2515,8 +2543,8 @@ export default class WaveTopBarExtension extends Extension {
             if (isActive) {
                 const checkIcon = new St.Icon({
                     icon_name: 'emblem-ok-symbolic',
-                    icon_size: 12,
-                    style_class: 'wave-topbar-icon',
+                    icon_size: 14,
+                    style_class: 'wave-volume-icon wave-wifi-item-active-icon',
                     y_align: Clutter.ActorAlign.CENTER,
                 });
                 rowBox.add_child(checkIcon);
@@ -2533,6 +2561,9 @@ export default class WaveTopBarExtension extends Extension {
                     if (this._outputToggleLabel) {
                         this._outputToggleLabel.text = _('Salida: %s').format(devName);
                     }
+                    if (this._outputToggleIcon) {
+                        this._outputToggleIcon.gicon = this._getSymbolicGIcon(dev?.get_gicon(), 'audio-speakers-symbolic');
+                    }
                 } else {
                     if (dev) {
                         this._audioControl.change_input(dev);
@@ -2541,6 +2572,9 @@ export default class WaveTopBarExtension extends Extension {
                     }
                     if (this._inputToggleLabel) {
                         this._inputToggleLabel.text = _('Entrada: %s').format(devName);
+                    }
+                    if (this._inputToggleIcon) {
+                        this._inputToggleIcon.gicon = this._getSymbolicGIcon(dev?.get_gicon(), 'audio-input-microphone-symbolic');
                     }
                 }
                 this._rebuildAudioDevicesList(container, type);
