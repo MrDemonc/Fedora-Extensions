@@ -464,6 +464,17 @@
     padding: 2px;
 }
 
+/* Volume Slider & Bin Styling */
+.wave-volume-menu .slider-bin {
+    padding: 4px 0;
+    min-width: 140px;
+}
+
+.wave-volume-menu .slider {
+    -barlevel-height: 4px;
+    -slider-handle-radius: 6px;
+}
+
 .wave-wifi-inline-qr-container {
     background-color: #ffffff;
     border-radius: 10px;

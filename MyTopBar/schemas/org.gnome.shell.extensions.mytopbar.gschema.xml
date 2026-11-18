@@ -61,6 +61,11 @@
       <summary>Show Bluetooth Indicator</summary>
       <description>Show Bluetooth status indicator and quick access.</description>
     </key>
+    <key name="show-volume" type="b">
+      <default>true</default>
+      <summary>Show Volume Indicator</summary>
+      <description>Show volume status indicator and quick access menu.</description>
+    </key>
     <key name="show-battery" type="b">
       <default>true</default>
       <summary>Show Battery with Percentage</summary>

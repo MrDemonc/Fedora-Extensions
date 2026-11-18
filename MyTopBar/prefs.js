@@ -206,6 +206,14 @@ export default class MyTopBarPreferences extends ExtensionPreferences {
         settings.bind('show-bluetooth', btRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         elementsGroup.add(btRow);
 
+        // Volumen y Audio
+        const volumeRow = new Adw.SwitchRow({
+            title: _('Control de Volumen y Audio'),
+            subtitle: _('Muestra el icono de volumen para controlar audio, micrófono y dispositivos.'),
+        });
+        settings.bind('show-volume', volumeRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        elementsGroup.add(volumeRow);
+
         // Batería con porcentaje
         const batteryRow = new Adw.SwitchRow({
             title: _('Batería con porcentaje'),

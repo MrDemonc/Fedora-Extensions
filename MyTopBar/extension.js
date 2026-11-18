@@ -33,6 +33,9 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { PointerTracker } from './pointerTracker.js';
+import Gvc from 'gi://Gvc';
+import { getMixerControl } from 'resource:///org/gnome/shell/ui/status/volume.js';
+import { Slider } from 'resource:///org/gnome/shell/ui/slider.js';
 
 export default class WaveTopBarExtension extends Extension {
     enable() {
@@ -56,8 +59,27 @@ export default class WaveTopBarExtension extends Extension {
         this._systemMenu = null;
         this._appMenu = null;
         this._batteryMenu = null;
+        this._volumeMenu = null;
         this._clockMenu = null;
         this._menuManager = new PopupMenu.PopupMenuManager(this);
+
+        // Audio mixer control state
+        this._audioControl = null;
+        this._audioControlSignals = [];
+        this._currentSink = null;
+        this._currentSource = null;
+        this._sinkSignals = [];
+        this._sourceSignals = [];
+        this._isDraggingOutputSlider = false;
+        this._isDraggingInputSlider = false;
+        this._syncingVolumeUI = false;
+
+        try {
+            this._audioControl = getMixerControl();
+            this._setupAudioListeners();
+        } catch (e) {
+            console.warn('[WaveTopBar] Error initializing audio mixer control:', e);
+        }
 
         // Spotlight state
         this._spotlightDialog = null;
@@ -239,6 +261,7 @@ export default class WaveTopBarExtension extends Extension {
             'changed::show-spotlight', () => this._updateVisibility(),
             'changed::show-wifi', () => this._updateVisibility(),
             'changed::show-bluetooth', () => this._updateVisibility(),
+            'changed::show-volume', () => this._updateVisibility(),
             'changed::show-battery', () => this._updateVisibility(),
             'changed::show-control-center', () => this._updateVisibility(),
             this
@@ -444,6 +467,42 @@ export default class WaveTopBarExtension extends Extension {
         this._bluetoothBtn.connect('button-press-event', handleRightClick);
         this._rightBox.add_child(this._bluetoothBtn);
 
+        // 6. Volume Status Button (Toggle menu + scroll to volume up/down)
+        this._volumeBtn = new St.Button({
+            style_class: 'wave-topbar-btn wave-topbar-pill-btn',
+            can_focus: false,
+            track_hover: false,
+            y_expand: true,
+            y_align: Clutter.ActorAlign.FILL,
+        });
+        this._volumeIcon = new St.Icon({
+            icon_name: 'audio-volume-high-symbolic',
+            icon_size: 11,
+            style_class: 'wave-topbar-icon wave-topbar-small-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._volumeBtn.set_child(this._volumeIcon);
+        this._volumeBtn.connect('clicked', () => this._toggleVolumeMenu());
+        this._volumeBtn.connect('button-press-event', handleRightClick);
+        this._volumeBtn.connect('scroll-event', (actor, event) => {
+            const direction = event.get_scroll_direction();
+            let delta = 0;
+            if (direction === Clutter.ScrollDirection.UP) {
+                delta = 0.05;
+            } else if (direction === Clutter.ScrollDirection.DOWN) {
+                delta = -0.05;
+            } else if (direction === Clutter.ScrollDirection.SMOOTH) {
+                const [, dy] = event.get_scroll_delta();
+                delta = -dy * 0.05;
+            }
+            if (delta !== 0) {
+                this._stepVolume(delta);
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._rightBox.add_child(this._volumeBtn);
+
         // 6. Battery with Percentage (Horizontal 23x11px Icon, Power Profile Menu)
         this._batteryBtn = new St.Button({
             style_class: 'wave-topbar-btn wave-topbar-pill-btn',
@@ -579,6 +638,7 @@ export default class WaveTopBarExtension extends Extension {
     _updateHardwareIndicators() {
         this._updateNetwork();
         this._updateBluetooth();
+        this._updateAudioIndicators();
         this._updateBatteryFromDBus();
     }
 
@@ -1777,6 +1837,602 @@ export default class WaveTopBarExtension extends Extension {
         this._updateBluetooth();
     }
 
+    // ==========================================
+    // Audio / Volume & Microphone Management
+    // ==========================================
+
+    _setupAudioListeners() {
+        if (!this._audioControl) return;
+
+        const connectCtrl = (sig, fn) => {
+            const id = this._audioControl.connect(sig, fn);
+            this._audioControlSignals.push(id);
+        };
+
+        connectCtrl('state-changed', () => {
+            this._connectSinkSignals();
+            this._connectSourceSignals();
+            this._updateAudioIndicators();
+        });
+        connectCtrl('default-sink-changed', () => {
+            this._connectSinkSignals();
+            this._updateAudioIndicators();
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._syncVolumeMenuValues();
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('default-source-changed', () => {
+            this._connectSourceSignals();
+            this._updateAudioIndicators();
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._syncVolumeMenuValues();
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('output-added', () => {
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('output-removed', () => {
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('active-output-update', () => {
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('input-added', () => {
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('input-removed', () => {
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._refreshAudioDeviceLists();
+            }
+        });
+        connectCtrl('active-input-update', () => {
+            if (this._volumeMenu && this._volumeMenu.isOpen) {
+                this._refreshAudioDeviceLists();
+            }
+        });
+
+        this._connectSinkSignals();
+        this._connectSourceSignals();
+        this._updateAudioIndicators();
+    }
+
+    _connectSinkSignals() {
+        if (this._currentSink && this._sinkSignals.length) {
+            for (const id of this._sinkSignals) {
+                try { this._currentSink.disconnect(id); } catch (e) {}
+            }
+        }
+        this._sinkSignals = [];
+        this._currentSink = this._audioControl ? this._audioControl.get_default_sink() : null;
+        if (this._currentSink) {
+            this._sinkSignals.push(
+                this._currentSink.connect('notify::volume', () => {
+                    this._updateAudioIndicators();
+                    if (this._volumeMenu && this._volumeMenu.isOpen && !this._isDraggingOutputSlider) {
+                        this._syncVolumeMenuValues();
+                    }
+                })
+            );
+            this._sinkSignals.push(
+                this._currentSink.connect('notify::is-muted', () => {
+                    this._updateAudioIndicators();
+                    if (this._volumeMenu && this._volumeMenu.isOpen) {
+                        this._syncVolumeMenuValues();
+                    }
+                })
+            );
+        }
+    }
+
+    _connectSourceSignals() {
+        if (this._currentSource && this._sourceSignals.length) {
+            for (const id of this._sourceSignals) {
+                try { this._currentSource.disconnect(id); } catch (e) {}
+            }
+        }
+        this._sourceSignals = [];
+        this._currentSource = this._audioControl ? this._audioControl.get_default_source() : null;
+        if (this._currentSource) {
+            this._sourceSignals.push(
+                this._currentSource.connect('notify::volume', () => {
+                    if (this._volumeMenu && this._volumeMenu.isOpen && !this._isDraggingInputSlider) {
+                        this._syncVolumeMenuValues();
+                    }
+                })
+            );
+            this._sourceSignals.push(
+                this._currentSource.connect('notify::is-muted', () => {
+                    if (this._volumeMenu && this._volumeMenu.isOpen) {
+                        this._syncVolumeMenuValues();
+                    }
+                })
+            );
+        }
+    }
+
+    _updateAudioIndicators() {
+        if (!this._volumeIcon || !this._audioControl) return;
+
+        const sink = this._audioControl.get_default_sink();
+        if (!sink) {
+            this._volumeIcon.icon_name = 'audio-volume-muted-symbolic';
+            return;
+        }
+
+        const maxNorm = this._audioControl.get_vol_max_norm() || 65536;
+        const fraction = sink.volume / maxNorm;
+        const isMuted = sink.is_muted;
+
+        this._volumeIcon.icon_name = this._getVolumeIconName(fraction, isMuted);
+    }
+
+    _getVolumeIconName(fraction, isMuted) {
+        if (isMuted || fraction <= 0.001) {
+            return 'audio-volume-muted-symbolic';
+        }
+        if (fraction < 0.33) {
+            return 'audio-volume-low-symbolic';
+        }
+        if (fraction < 0.66) {
+            return 'audio-volume-medium-symbolic';
+        }
+        return 'audio-volume-high-symbolic';
+    }
+
+    _getMicIconName(fraction, isMuted) {
+        if (isMuted || fraction <= 0.001) {
+            return 'microphone-sensitivity-muted-symbolic';
+        }
+        if (fraction < 0.33) {
+            return 'microphone-sensitivity-low-symbolic';
+        }
+        if (fraction < 0.66) {
+            return 'microphone-sensitivity-medium-symbolic';
+        }
+        return 'microphone-sensitivity-high-symbolic';
+    }
+
+    _stepVolume(step) {
+        if (!this._audioControl) return;
+        const sink = this._audioControl.get_default_sink();
+        if (!sink) return;
+
+        const maxNorm = this._audioControl.get_vol_max_norm() || 65536;
+        let current = sink.volume / maxNorm;
+        let next = Math.max(0, Math.min(1.0, current + step));
+
+        sink.volume = Math.round(next * maxNorm);
+        sink.push_volume();
+        if (sink.is_muted && next > 0) {
+            sink.change_is_muted(false);
+        }
+
+        this._updateAudioIndicators();
+        const iconName = this._getVolumeIconName(next, sink.is_muted);
+        Main.osdWindowManager.showAll(new Gio.ThemedIcon({ name: iconName }), null, next, 1.0);
+    }
+
+    _toggleVolumeMenu() {
+        if (this._volumeMenu && this._volumeMenu.isOpen) {
+            this._volumeMenu.close();
+        } else {
+            this._showVolumeMenu();
+        }
+    }
+
+    _showVolumeMenu() {
+        this._closeAllMenus();
+
+        const menu = new PopupMenu.PopupMenu(this._volumeBtn, 0.5, St.Side.TOP);
+        this._volumeMenu = menu;
+        menu.actor.add_style_class_name('wave-wifi-menu');
+        menu.actor.add_style_class_name('wave-volume-menu');
+        menu.actor.width = 330;
+        menu.actor.style = 'background-color: transparent !important; background: transparent !important; border: none !important; box-shadow: none !important;';
+
+        const isLight = Boolean(this._isLightMode);
+        menu.actor.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+        if (menu.box) {
+            menu.box.add_style_class_name('wave-wifi-menu-content');
+            menu.box.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+            menu.box.style = (isLight
+                ? 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;'
+                : 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;')
+                + ' width: 330px !important; min-width: 330px !important; max-width: 330px !important;';
+        }
+
+        menu.connect('destroy', () => {
+            if (this._volumeMenu === menu) {
+                this._volumeMenu = null;
+            }
+        });
+
+        // 1. Output Section: Title
+        const outputHeaderItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        const outputHeaderBox = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER, style: 'padding: 4px 6px 2px 6px;' });
+        const outputHeaderLabel = new St.Label({
+            text: _('SALIDA DE AUDIO'),
+            style_class: 'wave-wifi-section-title',
+            x_expand: true,
+        });
+        outputHeaderBox.add_child(outputHeaderLabel);
+        outputHeaderItem.add_child(outputHeaderBox);
+        menu.addMenuItem(outputHeaderItem);
+
+        // 2. Output Section: Volume Slider Card
+        const outputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
+        outputCardItem.activate = function () {};
+        outputCardItem.closeOnActivate = false;
+
+        const outputCard = new St.BoxLayout({
+            style_class: 'wave-wifi-inline-card',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 8px; padding: 6px 10px;',
+        });
+
+        const outputMuteBtn = new St.Button({
+            style_class: 'wave-wifi-icon-btn',
+            can_focus: true,
+            track_hover: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const sink = this._audioControl ? this._audioControl.get_default_sink() : null;
+        const maxNorm = this._audioControl ? (this._audioControl.get_vol_max_norm() || 65536) : 65536;
+        const outputFraction = sink ? Math.max(0, Math.min(1.0, sink.volume / maxNorm)) : 0;
+        const isSinkMuted = sink ? sink.is_muted : false;
+
+        this._outputMuteIcon = new St.Icon({
+            icon_name: this._getVolumeIconName(outputFraction, isSinkMuted),
+            icon_size: 14,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        outputMuteBtn.set_child(this._outputMuteIcon);
+        outputMuteBtn.connect('clicked', () => {
+            const curSink = this._audioControl?.get_default_sink();
+            if (!curSink) return;
+            curSink.change_is_muted(!curSink.is_muted);
+        });
+        outputCard.add_child(outputMuteBtn);
+
+        this._outputSlider = new Slider(outputFraction);
+        this._outputSlider.x_expand = true;
+        this._outputSlider.y_align = Clutter.ActorAlign.CENTER;
+
+        this._outputSlider.connect('drag-begin', () => { this._isDraggingOutputSlider = true; });
+        this._outputSlider.connect('drag-end', () => {
+            this._isDraggingOutputSlider = false;
+            const curSink = this._audioControl?.get_default_sink();
+            if (curSink) {
+                const val = this._outputSlider.value;
+                curSink.volume = Math.round(val * maxNorm);
+                curSink.push_volume();
+            }
+        });
+        this._outputSlider.connect('notify::value', () => {
+            if (this._syncingVolumeUI) return;
+            const curSink = this._audioControl?.get_default_sink();
+            if (!curSink) return;
+            const val = this._outputSlider.value;
+            curSink.volume = Math.round(val * maxNorm);
+            curSink.push_volume();
+            if (curSink.is_muted && val > 0) {
+                curSink.change_is_muted(false);
+            }
+            if (this._outputPercentLabel) {
+                this._outputPercentLabel.text = `${Math.round(val * 100)}%`;
+            }
+            this._outputMuteIcon.icon_name = this._getVolumeIconName(val, curSink.is_muted);
+            this._updateAudioIndicators();
+        });
+
+        const outputSliderBin = new St.Bin({
+            style_class: 'slider-bin',
+            child: this._outputSlider,
+            reactive: true,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        outputCard.add_child(outputSliderBin);
+
+        this._outputPercentLabel = new St.Label({
+            text: `${Math.round(outputFraction * 100)}%`,
+            style_class: 'wave-wifi-item-rate',
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'min-width: 38px; text-align: right;',
+        });
+        outputCard.add_child(this._outputPercentLabel);
+
+        outputCardItem.add_child(outputCard);
+        menu.addMenuItem(outputCardItem);
+
+        // 3. Output Devices Container
+        const outputDevicesItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
+        outputDevicesItem.activate = function () {};
+        outputDevicesItem.closeOnActivate = false;
+        this._outputDevicesBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            style: 'spacing: 2px; margin: 0 4px;',
+        });
+        outputDevicesItem.add_child(this._outputDevicesBox);
+        menu.addMenuItem(outputDevicesItem);
+        this._rebuildAudioDevicesList(this._outputDevicesBox, 'output');
+
+        // 4. Separator
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // 5. Input Section (Microphone): Title
+        const inputHeaderItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        const inputHeaderBox = new St.BoxLayout({ x_expand: true, y_align: Clutter.ActorAlign.CENTER, style: 'padding: 4px 6px 2px 6px;' });
+        const inputHeaderLabel = new St.Label({
+            text: _('MICRÓFONO'),
+            style_class: 'wave-wifi-section-title',
+            x_expand: true,
+        });
+        inputHeaderBox.add_child(inputHeaderLabel);
+        inputHeaderItem.add_child(inputHeaderBox);
+        menu.addMenuItem(inputHeaderItem);
+
+        // 6. Input Section: Mic Volume Slider Card
+        const inputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
+        inputCardItem.activate = function () {};
+        inputCardItem.closeOnActivate = false;
+
+        const inputCard = new St.BoxLayout({
+            style_class: 'wave-wifi-inline-card',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 8px; padding: 6px 10px;',
+        });
+
+        const inputMuteBtn = new St.Button({
+            style_class: 'wave-wifi-icon-btn',
+            can_focus: true,
+            track_hover: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const source = this._audioControl ? this._audioControl.get_default_source() : null;
+        const inputFraction = source ? Math.max(0, Math.min(1.0, source.volume / maxNorm)) : 0;
+        const isSourceMuted = source ? source.is_muted : false;
+
+        this._inputMuteIcon = new St.Icon({
+            icon_name: this._getMicIconName(inputFraction, isSourceMuted),
+            icon_size: 14,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        inputMuteBtn.set_child(this._inputMuteIcon);
+        inputMuteBtn.connect('clicked', () => {
+            const curSource = this._audioControl?.get_default_source();
+            if (!curSource) return;
+            curSource.change_is_muted(!curSource.is_muted);
+        });
+        inputCard.add_child(inputMuteBtn);
+
+        this._inputSlider = new Slider(inputFraction);
+        this._inputSlider.x_expand = true;
+        this._inputSlider.y_align = Clutter.ActorAlign.CENTER;
+
+        this._inputSlider.connect('drag-begin', () => { this._isDraggingInputSlider = true; });
+        this._inputSlider.connect('drag-end', () => {
+            this._isDraggingInputSlider = false;
+            const curSource = this._audioControl?.get_default_source();
+            if (curSource) {
+                const val = this._inputSlider.value;
+                curSource.volume = Math.round(val * maxNorm);
+                curSource.push_volume();
+            }
+        });
+        this._inputSlider.connect('notify::value', () => {
+            if (this._syncingVolumeUI) return;
+            const curSource = this._audioControl?.get_default_source();
+            if (!curSource) return;
+            const val = this._inputSlider.value;
+            curSource.volume = Math.round(val * maxNorm);
+            curSource.push_volume();
+            if (curSource.is_muted && val > 0) {
+                curSource.change_is_muted(false);
+            }
+            if (this._inputPercentLabel) {
+                this._inputPercentLabel.text = `${Math.round(val * 100)}%`;
+            }
+            this._inputMuteIcon.icon_name = this._getMicIconName(val, curSource.is_muted);
+        });
+
+        const inputSliderBin = new St.Bin({
+            style_class: 'slider-bin',
+            child: this._inputSlider,
+            reactive: true,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        inputCard.add_child(inputSliderBin);
+
+        this._inputPercentLabel = new St.Label({
+            text: `${Math.round(inputFraction * 100)}%`,
+            style_class: 'wave-wifi-item-rate',
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'min-width: 38px; text-align: right;',
+        });
+        inputCard.add_child(this._inputPercentLabel);
+
+        inputCardItem.add_child(inputCard);
+        menu.addMenuItem(inputCardItem);
+
+        // 7. Input Devices Container
+        const inputDevicesItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
+        inputDevicesItem.activate = function () {};
+        inputDevicesItem.closeOnActivate = false;
+        this._inputDevicesBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            style: 'spacing: 2px; margin: 0 4px;',
+        });
+        inputDevicesItem.add_child(this._inputDevicesBox);
+        menu.addMenuItem(inputDevicesItem);
+        this._rebuildAudioDevicesList(this._inputDevicesBox, 'input');
+
+        // 8. Separator
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // 9. Sound Settings Item
+        const settingsItem = new PopupMenu.PopupMenuItem(_('Configuración de sonido...'));
+        const settingsIcon = new St.Icon({
+            icon_name: 'emblem-system-symbolic',
+            fallback_icon_name: 'preferences-system-symbolic',
+            icon_size: 13,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        settingsItem.insert_child_at_index(settingsIcon, 0);
+        settingsItem.connect('activate', () => {
+            menu.close();
+            this._runCommandAsync(['gnome-control-center', 'sound']);
+        });
+        menu.addMenuItem(settingsItem);
+
+        Main.uiGroup.add_child(menu.actor);
+        menu.open();
+    }
+
+    _syncVolumeMenuValues() {
+        if (!this._audioControl || !this._volumeMenu || !this._volumeMenu.isOpen) return;
+
+        this._syncingVolumeUI = true;
+        try {
+            const maxNorm = this._audioControl.get_vol_max_norm() || 65536;
+
+            // Output sync
+            const sink = this._audioControl.get_default_sink();
+            if (sink && this._outputSlider && this._outputPercentLabel && this._outputMuteIcon) {
+                const fraction = Math.max(0, Math.min(1.0, sink.volume / maxNorm));
+                if (!this._isDraggingOutputSlider) {
+                    this._outputSlider.value = fraction;
+                }
+                this._outputPercentLabel.text = `${Math.round(fraction * 100)}%`;
+                this._outputMuteIcon.icon_name = this._getVolumeIconName(fraction, sink.is_muted);
+            }
+
+            // Input sync
+            const source = this._audioControl.get_default_source();
+            if (source && this._inputSlider && this._inputPercentLabel && this._inputMuteIcon) {
+                const fraction = Math.max(0, Math.min(1.0, source.volume / maxNorm));
+                if (!this._isDraggingInputSlider) {
+                    this._inputSlider.value = fraction;
+                }
+                this._inputPercentLabel.text = `${Math.round(fraction * 100)}%`;
+                this._inputMuteIcon.icon_name = this._getMicIconName(fraction, source.is_muted);
+            }
+        } finally {
+            this._syncingVolumeUI = false;
+        }
+    }
+
+    _refreshAudioDeviceLists() {
+        if (!this._volumeMenu || !this._volumeMenu.isOpen) return;
+        if (this._outputDevicesBox) {
+            this._rebuildAudioDevicesList(this._outputDevicesBox, 'output');
+        }
+        if (this._inputDevicesBox) {
+            this._rebuildAudioDevicesList(this._inputDevicesBox, 'input');
+        }
+    }
+
+    _rebuildAudioDevicesList(container, type) {
+        container.destroy_all_children();
+        if (!this._audioControl) return;
+
+        const isOutput = type === 'output';
+        const streams = isOutput ? this._audioControl.get_sinks() : this._audioControl.get_sources();
+        const defaultStream = isOutput ? this._audioControl.get_default_sink() : this._audioControl.get_default_source();
+
+        if (!streams || streams.length === 0) {
+            const emptyLabel = new St.Label({
+                text: isOutput ? _('No hay salidas de audio') : _('No hay micrófonos disponibles'),
+                style_class: 'wave-wifi-item-rate',
+                style: 'padding: 4px 8px;',
+            });
+            container.add_child(emptyLabel);
+            return;
+        }
+
+        for (const s of streams) {
+            const dev = isOutput
+                ? this._audioControl.lookup_output_id(s.get_id())
+                : this._audioControl.lookup_input_id(s.get_id());
+
+            const devName = dev ? dev.get_description() : s.get_description();
+            const isActive = defaultStream && defaultStream.get_id() === s.get_id();
+
+            const rowBtn = new St.Button({
+                style_class: 'wave-wifi-net-row',
+                can_focus: true,
+                track_hover: true,
+                x_expand: true,
+                style: 'padding: 5px 8px; border-radius: 6px;',
+            });
+            const rowBox = new St.BoxLayout({
+                x_expand: true,
+                y_align: Clutter.ActorAlign.CENTER,
+                style: 'spacing: 8px;',
+            });
+
+            const devIcon = new St.Icon({
+                icon_size: 13,
+                style_class: 'wave-topbar-icon',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            if (dev && dev.get_gicon()) {
+                devIcon.gicon = dev.get_gicon();
+            } else {
+                devIcon.icon_name = isOutput ? 'audio-speakers-symbolic' : 'audio-input-microphone-symbolic';
+            }
+            rowBox.add_child(devIcon);
+
+            const nameLabel = new St.Label({
+                text: devName,
+                style_class: isActive ? 'wave-wifi-item-name-active' : 'wave-wifi-item-name',
+                x_expand: true,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            rowBox.add_child(nameLabel);
+
+            if (isActive) {
+                const checkIcon = new St.Icon({
+                    icon_name: 'emblem-ok-symbolic',
+                    icon_size: 12,
+                    style_class: 'wave-topbar-icon',
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+                rowBox.add_child(checkIcon);
+            }
+
+            rowBtn.set_child(rowBox);
+            rowBtn.connect('clicked', () => {
+                if (dev) {
+                    if (isOutput) {
+                        this._audioControl.change_output(dev);
+                    } else {
+                        this._audioControl.change_input(dev);
+                    }
+                }
+            });
+            container.add_child(rowBtn);
+        }
+    }
+
     _updateBatteryFromDBus() {
         if (!this._upowerProxy || !this._batteryDrawing || !this._batteryLabel)
             return;
@@ -2182,6 +2838,7 @@ export default class WaveTopBarExtension extends Extension {
         };
 
         if (this._wifiMenu && this._wifiMenu.isOpen) updateMenuTheme(this._wifiMenu);
+        if (this._volumeMenu && this._volumeMenu.isOpen) updateMenuTheme(this._volumeMenu);
         if (this._batteryMenu && this._batteryMenu.isOpen) updateMenuTheme(this._batteryMenu);
         if (this._clockMenu && this._clockMenu.isOpen) updateMenuTheme(this._clockMenu);
         if (this._systemMenu && this._systemMenu.isOpen) updateMenuTheme(this._systemMenu);
@@ -2272,6 +2929,7 @@ export default class WaveTopBarExtension extends Extension {
         const showSpot = this._settings.get_boolean('show-spotlight');
         const showWifi = this._settings.get_boolean('show-wifi');
         const showBt = this._settings.get_boolean('show-bluetooth');
+        const showVol = this._settings.get_boolean('show-volume');
         const showBat = this._settings.get_boolean('show-battery');
         const showCC = this._settings.get_boolean('show-control-center');
         const showClock = this._settings.get_boolean('show-clock');
@@ -2281,6 +2939,7 @@ export default class WaveTopBarExtension extends Extension {
         if (this._spotlightBtn) this._spotlightBtn.visible = showSpot;
         if (this._wifiBtn) this._wifiBtn.visible = showWifi;
         if (this._bluetoothBtn) this._bluetoothBtn.visible = showBt;
+        if (this._volumeBtn) this._volumeBtn.visible = showVol;
         if (this._batteryBtn) this._batteryBtn.visible = showBat;
         if (this._controlCenterBtn) this._controlCenterBtn.visible = showCC;
         if (this._clockBtn) this._clockBtn.visible = showClock;
@@ -2901,6 +3560,11 @@ export default class WaveTopBarExtension extends Extension {
             this._batteryMenu.destroy();
             this._batteryMenu = null;
         }
+        if (this._volumeMenu) {
+            this._volumeMenu.close();
+            this._volumeMenu.destroy();
+            this._volumeMenu = null;
+        }
         if (this._clockMenu) {
             this._clockMenu.close();
             this._clockMenu.destroy();
@@ -3269,6 +3933,7 @@ export default class WaveTopBarExtension extends Extension {
             this._spotlightBtn,
             this._wifiBtn,
             this._bluetoothBtn,
+            this._volumeBtn,
             this._batteryBtn,
             this._controlCenterBtn,
             this._clockBtn,
@@ -3384,6 +4049,31 @@ export default class WaveTopBarExtension extends Extension {
             this._btClient.disconnectObject(this);
             this._btClient = null;
         }
+
+        if (this._audioControl && this._audioControlSignals.length) {
+            for (const id of this._audioControlSignals) {
+                try { this._audioControl.disconnect(id); } catch (e) {}
+            }
+            this._audioControlSignals = [];
+        }
+        if (this._currentSink && this._sinkSignals.length) {
+            for (const id of this._sinkSignals) {
+                try { this._currentSink.disconnect(id); } catch (e) {}
+            }
+            this._sinkSignals = [];
+        }
+        if (this._currentSource && this._sourceSignals.length) {
+            for (const id of this._sourceSignals) {
+                try { this._currentSource.disconnect(id); } catch (e) {}
+            }
+            this._sourceSignals = [];
+        }
+        this._audioControl = null;
+        this._currentSink = null;
+        this._currentSource = null;
+        this._volumeMenu = null;
+        this._volumeBtn = null;
+        this._volumeIcon = null;
 
         this._upowerProxy = null;
         this._powerProfilesProxy = null;
