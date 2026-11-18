@@ -457,6 +457,13 @@
     margin: 4px 8px 6px 8px;
 }
 
+.wave-wifi-sec-menu {
+    background-color: rgba(0, 0, 0, 0.20);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 2px;
+}
+
 .wave-wifi-inline-qr-container {
     background-color: #ffffff;
     border-radius: 10px;
@@ -647,6 +654,12 @@
     border: 1px solid rgba(0, 0, 0, 0.10);
 }
 
+.wave-wifi-menu.theme-light .wave-wifi-sec-menu,
+.wave-wifi-menu-content.theme-light .wave-wifi-sec-menu {
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .wave-wifi-menu.theme-light .wave-wifi-inline-qr-container {
     background-color: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.10);
@@ -822,6 +835,12 @@
 .wave-wifi-menu.theme-dark .wave-wifi-inline-card {
     background-color: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.wave-wifi-menu.theme-dark .wave-wifi-sec-menu,
+.wave-wifi-menu-content.theme-dark .wave-wifi-sec-menu {
+    background-color: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .wave-wifi-menu.theme-dark .wave-wifi-inline-qr-container {
