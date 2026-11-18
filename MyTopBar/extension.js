@@ -2038,22 +2038,20 @@ export default class WaveTopBarExtension extends Extension {
         menu.actor.add_style_class_name('wave-wifi-menu');
         menu.actor.add_style_class_name('wave-volume-menu');
         menu.actor.width = 330;
-        menu.actor.style = 'background-color: transparent !important; background: transparent !important; border: none !important; box-shadow: none !important;';
-
-        const isLight = Boolean(this._isLightMode);
-        menu.actor.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
-        if (menu.box) {
-            menu.box.add_style_class_name('wave-wifi-menu-content');
-            menu.box.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
-            menu.box.style = (isLight
-                ? 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;'
-                : 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;')
-                + ' width: 330px !important; min-width: 330px !important; max-width: 330px !important;';
-        }
 
         menu.connect('destroy', () => {
             if (this._volumeMenu === menu) {
                 this._volumeMenu = null;
+                this._outputDevicesBox = null;
+                this._inputDevicesBox = null;
+                this._outputToggleLabel = null;
+                this._inputToggleLabel = null;
+                this._outputSlider = null;
+                this._inputSlider = null;
+                this._outputPercentLabel = null;
+                this._inputPercentLabel = null;
+                this._outputMuteIcon = null;
+                this._inputMuteIcon = null;
             }
         });
 
@@ -2070,10 +2068,7 @@ export default class WaveTopBarExtension extends Extension {
         menu.addMenuItem(outputHeaderItem);
 
         // 2. Output Section: Volume Slider Card
-        const outputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
-        outputCardItem.activate = function () {};
-        outputCardItem.closeOnActivate = false;
-
+        const outputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         const outputCard = new St.BoxLayout({
             style_class: 'wave-wifi-inline-card',
             x_expand: true,
@@ -2157,18 +2152,65 @@ export default class WaveTopBarExtension extends Extension {
         outputCardItem.add_child(outputCard);
         menu.addMenuItem(outputCardItem);
 
-        // 3. Output Devices Container
-        const outputDevicesItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
-        outputDevicesItem.activate = function () {};
-        outputDevicesItem.closeOnActivate = false;
+        // 3. Output Section: Collapsible Devices Drawer (Compressed)
+        const curSinkDev = sink ? this._audioControl.lookup_output_id(sink.get_id()) : null;
+        const curSinkName = curSinkDev ? curSinkDev.get_description() : (sink ? sink.get_description() : _('Altavoces'));
+
+        const outputToggleItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        const outputToggleBtn = new St.Button({
+            style_class: 'wave-wifi-net-row',
+            can_focus: true,
+            track_hover: true,
+            x_expand: true,
+            style: 'padding: 5px 8px; margin: 0 4px;',
+        });
+        const outputToggleBox = new St.BoxLayout({
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 8px;',
+        });
+        const outputToggleIcon = new St.Icon({
+            icon_name: 'audio-speakers-symbolic',
+            icon_size: 13,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._outputToggleLabel = new St.Label({
+            text: _('Salida: %s').format(curSinkName),
+            style_class: 'wave-wifi-item-name',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const outputArrowLabel = new St.Label({
+            text: '▾',
+            style_class: 'wave-wifi-item-rate',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        outputToggleBox.add_child(outputToggleIcon);
+        outputToggleBox.add_child(this._outputToggleLabel);
+        outputToggleBox.add_child(outputArrowLabel);
+        outputToggleBtn.set_child(outputToggleBox);
+        outputToggleItem.add_child(outputToggleBtn);
+        menu.addMenuItem(outputToggleItem);
+
+        const outputDrawerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        outputDrawerItem.actor.visible = false;
         this._outputDevicesBox = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
-            style: 'spacing: 2px; margin: 0 4px;',
+            style_class: 'wave-wifi-sec-menu',
+            style: 'margin: 2px 8px 4px 8px; padding: 2px;',
         });
-        outputDevicesItem.add_child(this._outputDevicesBox);
-        menu.addMenuItem(outputDevicesItem);
-        this._rebuildAudioDevicesList(this._outputDevicesBox, 'output');
+        outputDrawerItem.add_child(this._outputDevicesBox);
+        menu.addMenuItem(outputDrawerItem);
+
+        outputToggleBtn.connect('clicked', () => {
+            outputDrawerItem.actor.visible = !outputDrawerItem.actor.visible;
+            outputArrowLabel.text = outputDrawerItem.actor.visible ? '▴' : '▾';
+            if (outputDrawerItem.actor.visible) {
+                this._rebuildAudioDevicesList(this._outputDevicesBox, 'output');
+            }
+        });
 
         // 4. Separator
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
@@ -2186,10 +2228,7 @@ export default class WaveTopBarExtension extends Extension {
         menu.addMenuItem(inputHeaderItem);
 
         // 6. Input Section: Mic Volume Slider Card
-        const inputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
-        inputCardItem.activate = function () {};
-        inputCardItem.closeOnActivate = false;
-
+        const inputCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         const inputCard = new St.BoxLayout({
             style_class: 'wave-wifi-inline-card',
             x_expand: true,
@@ -2271,18 +2310,65 @@ export default class WaveTopBarExtension extends Extension {
         inputCardItem.add_child(inputCard);
         menu.addMenuItem(inputCardItem);
 
-        // 7. Input Devices Container
-        const inputDevicesItem = new PopupMenu.PopupBaseMenuItem({ reactive: true, can_focus: false, activate: false });
-        inputDevicesItem.activate = function () {};
-        inputDevicesItem.closeOnActivate = false;
+        // 7. Input Section: Collapsible Devices Drawer (Compressed)
+        const curSourceDev = source ? this._audioControl.lookup_input_id(source.get_id()) : null;
+        const curSourceName = curSourceDev ? curSourceDev.get_description() : (source ? source.get_description() : _('Micrófono'));
+
+        const inputToggleItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        const inputToggleBtn = new St.Button({
+            style_class: 'wave-wifi-net-row',
+            can_focus: true,
+            track_hover: true,
+            x_expand: true,
+            style: 'padding: 5px 8px; margin: 0 4px;',
+        });
+        const inputToggleBox = new St.BoxLayout({
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 8px;',
+        });
+        const inputToggleIcon = new St.Icon({
+            icon_name: 'audio-input-microphone-symbolic',
+            icon_size: 13,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._inputToggleLabel = new St.Label({
+            text: _('Entrada: %s').format(curSourceName),
+            style_class: 'wave-wifi-item-name',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const inputArrowLabel = new St.Label({
+            text: '▾',
+            style_class: 'wave-wifi-item-rate',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        inputToggleBox.add_child(inputToggleIcon);
+        inputToggleBox.add_child(this._inputToggleLabel);
+        inputToggleBox.add_child(inputArrowLabel);
+        inputToggleBtn.set_child(inputToggleBox);
+        inputToggleItem.add_child(inputToggleBtn);
+        menu.addMenuItem(inputToggleItem);
+
+        const inputDrawerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+        inputDrawerItem.actor.visible = false;
         this._inputDevicesBox = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
-            style: 'spacing: 2px; margin: 0 4px;',
+            style_class: 'wave-wifi-sec-menu',
+            style: 'margin: 2px 8px 4px 8px; padding: 2px;',
         });
-        inputDevicesItem.add_child(this._inputDevicesBox);
-        menu.addMenuItem(inputDevicesItem);
-        this._rebuildAudioDevicesList(this._inputDevicesBox, 'input');
+        inputDrawerItem.add_child(this._inputDevicesBox);
+        menu.addMenuItem(inputDrawerItem);
+
+        inputToggleBtn.connect('clicked', () => {
+            inputDrawerItem.actor.visible = !inputDrawerItem.actor.visible;
+            inputArrowLabel.text = inputDrawerItem.actor.visible ? '▴' : '▾';
+            if (inputDrawerItem.actor.visible) {
+                this._rebuildAudioDevicesList(this._inputDevicesBox, 'input');
+            }
+        });
 
         // 8. Separator
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
@@ -2303,8 +2389,7 @@ export default class WaveTopBarExtension extends Extension {
         });
         menu.addMenuItem(settingsItem);
 
-        Main.uiGroup.add_child(menu.actor);
-        menu.open();
+        this._registerMenu(menu);
     }
 
     _syncVolumeMenuValues() {
@@ -2316,24 +2401,42 @@ export default class WaveTopBarExtension extends Extension {
 
             // Output sync
             const sink = this._audioControl.get_default_sink();
-            if (sink && this._outputSlider && this._outputPercentLabel && this._outputMuteIcon) {
+            if (sink) {
                 const fraction = Math.max(0, Math.min(1.0, sink.volume / maxNorm));
-                if (!this._isDraggingOutputSlider) {
+                if (this._outputSlider && !this._isDraggingOutputSlider) {
                     this._outputSlider.value = fraction;
                 }
-                this._outputPercentLabel.text = `${Math.round(fraction * 100)}%`;
-                this._outputMuteIcon.icon_name = this._getVolumeIconName(fraction, sink.is_muted);
+                if (this._outputPercentLabel) {
+                    this._outputPercentLabel.text = `${Math.round(fraction * 100)}%`;
+                }
+                if (this._outputMuteIcon) {
+                    this._outputMuteIcon.icon_name = this._getVolumeIconName(fraction, sink.is_muted);
+                }
+                if (this._outputToggleLabel) {
+                    const dev = this._audioControl.lookup_output_id(sink.get_id());
+                    const name = dev ? dev.get_description() : sink.get_description();
+                    this._outputToggleLabel.text = _('Salida: %s').format(name);
+                }
             }
 
             // Input sync
             const source = this._audioControl.get_default_source();
-            if (source && this._inputSlider && this._inputPercentLabel && this._inputMuteIcon) {
+            if (source) {
                 const fraction = Math.max(0, Math.min(1.0, source.volume / maxNorm));
-                if (!this._isDraggingInputSlider) {
+                if (this._inputSlider && !this._isDraggingInputSlider) {
                     this._inputSlider.value = fraction;
                 }
-                this._inputPercentLabel.text = `${Math.round(fraction * 100)}%`;
-                this._inputMuteIcon.icon_name = this._getMicIconName(fraction, source.is_muted);
+                if (this._inputPercentLabel) {
+                    this._inputPercentLabel.text = `${Math.round(fraction * 100)}%`;
+                }
+                if (this._inputMuteIcon) {
+                    this._inputMuteIcon.icon_name = this._getMicIconName(fraction, source.is_muted);
+                }
+                if (this._inputToggleLabel) {
+                    const dev = this._audioControl.lookup_input_id(source.get_id());
+                    const name = dev ? dev.get_description() : source.get_description();
+                    this._inputToggleLabel.text = _('Entrada: %s').format(name);
+                }
             }
         } finally {
             this._syncingVolumeUI = false;
@@ -2342,10 +2445,10 @@ export default class WaveTopBarExtension extends Extension {
 
     _refreshAudioDeviceLists() {
         if (!this._volumeMenu || !this._volumeMenu.isOpen) return;
-        if (this._outputDevicesBox) {
+        if (this._outputDevicesBox && this._outputDevicesBox.mapped) {
             this._rebuildAudioDevicesList(this._outputDevicesBox, 'output');
         }
-        if (this._inputDevicesBox) {
+        if (this._inputDevicesBox && this._inputDevicesBox.mapped) {
             this._rebuildAudioDevicesList(this._inputDevicesBox, 'input');
         }
     }
@@ -2421,13 +2524,26 @@ export default class WaveTopBarExtension extends Extension {
 
             rowBtn.set_child(rowBox);
             rowBtn.connect('clicked', () => {
-                if (dev) {
-                    if (isOutput) {
+                if (isOutput) {
+                    if (dev) {
                         this._audioControl.change_output(dev);
-                    } else {
+                    } else if (this._audioControl.set_default_sink) {
+                        this._audioControl.set_default_sink(s);
+                    }
+                    if (this._outputToggleLabel) {
+                        this._outputToggleLabel.text = _('Salida: %s').format(devName);
+                    }
+                } else {
+                    if (dev) {
                         this._audioControl.change_input(dev);
+                    } else if (this._audioControl.set_default_source) {
+                        this._audioControl.set_default_source(s);
+                    }
+                    if (this._inputToggleLabel) {
+                        this._inputToggleLabel.text = _('Entrada: %s').format(devName);
                     }
                 }
+                this._rebuildAudioDevicesList(container, type);
             });
             container.add_child(rowBtn);
         }
