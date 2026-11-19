@@ -71,6 +71,11 @@
       <summary>Show Battery with Percentage</summary>
       <description>Show battery icon and percentage.</description>
     </key>
+    <key name="show-notifications" type="b">
+      <default>true</default>
+      <summary>Show Notification Center</summary>
+      <description>Show notification icon to view and manage recent notifications.</description>
+    </key>
     <key name="show-control-center" type="b">
       <default>true</default>
       <summary>Show Control Center</summary>

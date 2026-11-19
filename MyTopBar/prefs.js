@@ -222,6 +222,14 @@ export default class MyTopBarPreferences extends ExtensionPreferences {
         settings.bind('show-battery', batteryRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         elementsGroup.add(batteryRow);
 
+        // Centro de Notificaciones
+        const notificationsRow = new Adw.SwitchRow({
+            title: _('Centro de Notificaciones'),
+            subtitle: _('Muestra el icono de notificaciones en el TopBar con acceso al historial.'),
+        });
+        settings.bind('show-notifications', notificationsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        elementsGroup.add(notificationsRow);
+
         // Centro de Control
         const controlCenterRow = new Adw.SwitchRow({
             title: _('Centro de Control (Icono de sliders)'),

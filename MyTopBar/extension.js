@@ -30,6 +30,7 @@ import Pango from 'gi://Pango';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { PointerTracker } from './pointerTracker.js';
@@ -60,8 +61,20 @@ export default class WaveTopBarExtension extends Extension {
         this._appMenu = null;
         this._batteryMenu = null;
         this._volumeMenu = null;
+        this._notificationsMenu = null;
+        this._notificationsListBox = null;
         this._clockMenu = null;
         this._menuManager = new PopupMenu.PopupMenuManager(this);
+
+        // Notifications state & banner placement
+        this._notificationsBtn = null;
+        this._notificationsIcon = null;
+        this._notificationsBadge = null;
+        this._trackedSources = null;
+        this._notifSignals = [];
+        this._origUpdateShowingNotification = null;
+        this._origBannerBinXAlign = null;
+        this._origBannerBinMarginRight = null;
 
         // Audio mixer control state
         this._audioControl = null;
@@ -263,6 +276,7 @@ export default class WaveTopBarExtension extends Extension {
             'changed::show-bluetooth', () => this._updateVisibility(),
             'changed::show-volume', () => this._updateVisibility(),
             'changed::show-battery', () => this._updateVisibility(),
+            'changed::show-notifications', () => this._updateVisibility(),
             'changed::show-control-center', () => this._updateVisibility(),
             this
         );
@@ -279,6 +293,10 @@ export default class WaveTopBarExtension extends Extension {
 
         // Initial window check
         this._trackFocusWindow();
+
+        // Notification Center & Banner placement
+        this._setupNotificationBanners();
+        this._setupNotificationTracking();
     }
 
     _buildTopBar() {
@@ -540,6 +558,39 @@ export default class WaveTopBarExtension extends Extension {
         this._batteryBtn.connect('clicked', () => this._showBatteryMenu());
         this._batteryBtn.connect('button-press-event', handleRightClick);
         this._rightBox.add_child(this._batteryBtn);
+
+        // 6.5. Notifications Button (Symbolic Bell with Unread Badge)
+        this._notificationsBtn = new St.Button({
+            style_class: 'wave-topbar-btn wave-topbar-pill-btn',
+            can_focus: false,
+            track_hover: false,
+            y_expand: true,
+            y_align: Clutter.ActorAlign.FILL,
+        });
+        const notifBox = new St.BoxLayout({
+            vertical: false,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 2px;',
+        });
+        this._notificationsIcon = new St.Icon({
+            icon_name: 'preferences-system-notifications-symbolic',
+            fallback_icon_name: 'notification-symbolic',
+            icon_size: 13,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._notificationsBadge = new St.Label({
+            text: '',
+            style_class: 'wave-topbar-badge',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
+        notifBox.add_child(this._notificationsIcon);
+        notifBox.add_child(this._notificationsBadge);
+        this._notificationsBtn.set_child(notifBox);
+        this._notificationsBtn.connect('clicked', () => this._toggleNotificationsMenu());
+        this._notificationsBtn.connect('button-press-event', handleRightClick);
+        this._rightBox.add_child(this._notificationsBtn);
 
         // 7. Control Center Button (THE ONLY ICON THAT OPENS GNOME QUICK SETTINGS)
         this._controlCenterBtn = new St.Button({
@@ -2793,6 +2844,550 @@ export default class WaveTopBarExtension extends Extension {
         this._registerMenu(menu);
     }
 
+    // --- NOTIFICATIONS SYSTEM & MENU ---
+    _setupNotificationBanners() {
+        if (!Main.messageTray) return;
+
+        try {
+            if (Main.messageTray._bannerBin) {
+                this._origBannerBinXAlign = Main.messageTray._bannerBin.x_align;
+                this._origBannerBinMarginRight = Main.messageTray._bannerBin.margin_right;
+                Main.messageTray._bannerBin.x_align = Clutter.ActorAlign.END;
+                Main.messageTray._bannerBin.margin_right = 16;
+            }
+
+            const self = this;
+            const origUpdate = Main.messageTray._updateShowingNotification;
+            this._origUpdateShowingNotification = origUpdate;
+
+            Main.messageTray._updateShowingNotification = function () {
+                this._notification.acknowledged = true;
+                this._notification.playSound();
+
+                if (this._notification.urgency === MessageTray.Urgency.CRITICAL ||
+                    this._notification.source.policy.forceExpanded)
+                    this._expandBanner(true);
+
+                this._notificationState = MessageTray.State.SHOWING;
+                this._bannerBin.remove_all_transitions();
+                this._bannerBin.ease({
+                    opacity: 255,
+                    duration: MessageTray.ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                });
+                this._bannerBin.set_pivot_point(0.5, 0.5);
+                this._bannerBin.scale_x = 0.9;
+                this._bannerBin.scale_y = 0.9;
+                const targetY = (self._barHeight || 28) + 6;
+                this._bannerBin.ease({
+                    y: targetY,
+                    scale_x: 1,
+                    scale_y: 1,
+                    duration: MessageTray.ANIMATION_TIME,
+                    mode: Clutter.AnimationMode.EASE_OUT_BACK,
+                    onComplete: () => {
+                        this._notificationState = MessageTray.State.SHOWN;
+                        this._showNotificationCompleted();
+                        this._updateState();
+                    },
+                });
+            };
+        } catch (e) {
+            console.warn('[WaveTopBar] Error setting up notification banner positioning:', e);
+        }
+    }
+
+    _restoreNotificationBanners() {
+        if (this._origUpdateShowingNotification && Main.messageTray) {
+            Main.messageTray._updateShowingNotification = this._origUpdateShowingNotification;
+            this._origUpdateShowingNotification = null;
+        }
+        if (Main.messageTray?._bannerBin) {
+            if (this._origBannerBinXAlign !== undefined && this._origBannerBinXAlign !== null)
+                Main.messageTray._bannerBin.x_align = this._origBannerBinXAlign;
+            if (this._origBannerBinMarginRight !== undefined && this._origBannerBinMarginRight !== null)
+                Main.messageTray._bannerBin.margin_right = this._origBannerBinMarginRight;
+        }
+    }
+
+    _setupNotificationTracking() {
+        if (!Main.messageTray) return;
+
+        this._trackedSources = new Set();
+        this._notifSignals = [];
+
+        const onSourcesChanged = () => {
+            this._updateNotificationBadge();
+            if (this._notificationsMenu && this._notificationsMenu.isOpen) {
+                this._rebuildNotificationsList();
+            }
+        };
+
+        const connectSource = (source) => {
+            if (!source || this._trackedSources.has(source)) return;
+            this._trackedSources.add(source);
+
+            const addedId = source.connect('notification-added', onSourcesChanged);
+            const removedId = source.connect('notification-removed', onSourcesChanged);
+            const destroyId = source.connect('destroy', () => {
+                this._trackedSources.delete(source);
+                onSourcesChanged();
+            });
+
+            source._waveNotifSignals = [addedId, removedId, destroyId];
+        };
+
+        const sig1 = Main.messageTray.connect('source-added', (_tray, source) => {
+            connectSource(source);
+            onSourcesChanged();
+        });
+        const sig2 = Main.messageTray.connect('source-removed', () => {
+            onSourcesChanged();
+        });
+        const sig3 = Main.messageTray.connect('queue-changed', () => {
+            onSourcesChanged();
+        });
+
+        this._notifSignals = [sig1, sig2, sig3];
+
+        try {
+            const sources = Main.messageTray.getSources();
+            for (const s of sources) {
+                connectSource(s);
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        this._updateNotificationBadge();
+    }
+
+    _teardownNotificationTracking() {
+        if (Main.messageTray && this._notifSignals) {
+            for (const id of this._notifSignals) {
+                try { Main.messageTray.disconnect(id); } catch (e) {}
+            }
+            this._notifSignals = [];
+        }
+        if (this._trackedSources) {
+            for (const source of this._trackedSources) {
+                if (source._waveNotifSignals) {
+                    for (const id of source._waveNotifSignals) {
+                        try { source.disconnect(id); } catch (e) {}
+                    }
+                    delete source._waveNotifSignals;
+                }
+            }
+            this._trackedSources.clear();
+            this._trackedSources = null;
+        }
+    }
+
+    _getNotificationCount() {
+        let count = 0;
+        try {
+            const sources = Main.messageTray ? Main.messageTray.getSources() : [];
+            for (const source of sources) {
+                if (source && source.notifications) {
+                    count += source.notifications.length;
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+        return count;
+    }
+
+    _updateNotificationBadge() {
+        if (!this._notificationsBadge) return;
+        const count = this._getNotificationCount();
+        if (count > 0) {
+            this._notificationsBadge.text = count > 99 ? '99+' : `${count}`;
+            this._notificationsBadge.visible = true;
+        } else {
+            this._notificationsBadge.text = '';
+            this._notificationsBadge.visible = false;
+        }
+    }
+
+    _getAllNotifications() {
+        const list = [];
+        try {
+            const sources = Main.messageTray ? Main.messageTray.getSources() : [];
+            for (const source of sources) {
+                if (source && source.notifications && source.notifications.length) {
+                    for (const notif of source.notifications) {
+                        list.push({ source, notif });
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[WaveTopBar] Error reading notifications:', e);
+        }
+        list.sort((a, b) => {
+            const timeA = a.notif.datetime ? a.notif.datetime.to_unix() : 0;
+            const timeB = b.notif.datetime ? b.notif.datetime.to_unix() : 0;
+            return timeB - timeA;
+        });
+        return list;
+    }
+
+    _clearAllNotifications() {
+        try {
+            const sources = Main.messageTray ? Main.messageTray.getSources() : [];
+            for (const source of sources) {
+                if (source && source.notifications) {
+                    const copy = [...source.notifications];
+                    for (const notif of copy) {
+                        try {
+                            notif.destroy();
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[WaveTopBar] Error clearing notifications:', e);
+        }
+        this._updateNotificationBadge();
+        if (this._notificationsMenu && this._notificationsMenu.isOpen) {
+            this._rebuildNotificationsList();
+        }
+    }
+
+    _formatNotificationTime(datetime) {
+        if (!datetime) return _('ahora');
+        try {
+            const now = GLib.DateTime.new_now_local();
+            const diffSec = now.to_unix() - datetime.to_unix();
+            if (diffSec < 60) {
+                return _('ahora');
+            } else if (diffSec < 3600) {
+                const mins = Math.floor(diffSec / 60);
+                return `${mins}m`;
+            } else if (diffSec < 86400) {
+                const hours = Math.floor(diffSec / 3600);
+                return `${hours}h`;
+            } else {
+                return datetime.format('%d %b') || '';
+            }
+        } catch (e) {
+            return '';
+        }
+    }
+
+    _toggleNotificationsMenu() {
+        if (this._notificationsMenu && this._notificationsMenu.isOpen) {
+            this._notificationsMenu.close();
+        } else {
+            this._showNotificationsMenu();
+        }
+    }
+
+    _showNotificationsMenu() {
+        this._closeAllMenus();
+
+        const menu = new PopupMenu.PopupMenu(this._notificationsBtn, 0.5, St.Side.TOP);
+        this._notificationsMenu = menu;
+        menu.actor.add_style_class_name('wave-wifi-menu');
+        menu.actor.add_style_class_name('wave-notifications-menu');
+        menu.actor.width = 350;
+
+        menu.connect('destroy', () => {
+            if (this._notificationsMenu === menu) {
+                this._notificationsMenu = null;
+                this._notificationsListBox = null;
+                this._notificationsClearAllBtn = null;
+            }
+        });
+
+        // 1. Header: "NOTIFICACIONES" + "Limpiar todo" button
+        const headerItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+            style_class: 'wave-wifi-header-item',
+        });
+        const headerBox = new St.BoxLayout({
+            vertical: false,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        const headerTitle = new St.Label({
+            text: _('NOTIFICACIONES'),
+            style_class: 'wave-wifi-section-title',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        headerBox.add_child(headerTitle);
+
+        const headerSpacer = new St.Widget({ x_expand: true });
+        headerBox.add_child(headerSpacer);
+
+        this._notificationsClearAllBtn = new St.Button({
+            style_class: 'wave-wifi-refresh-btn',
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const clearAllLabel = new St.Label({
+            text: _('Limpiar todo'),
+            style: 'font-size: 11px; font-weight: 600;',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._notificationsClearAllBtn.set_child(clearAllLabel);
+        this._notificationsClearAllBtn.connect('clicked', () => {
+            this._clearAllNotifications();
+        });
+        headerBox.add_child(this._notificationsClearAllBtn);
+
+        headerItem.add_child(headerBox);
+        menu.addMenuItem(headerItem);
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // 2. Scrollable Notifications List
+        const scrollItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+            style: 'padding: 0 !important; margin: 0 !important;',
+        });
+        const scrollView = new St.ScrollView({
+            overlay_scrollbars: true,
+            x_expand: true,
+            y_expand: true,
+            style: 'max-height: 380px;',
+        });
+        this._notificationsListBox = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            y_expand: true,
+        });
+        scrollView.add_child(this._notificationsListBox);
+        scrollItem.add_child(scrollView);
+        menu.addMenuItem(scrollItem);
+
+        this._rebuildNotificationsList();
+
+        // 3. Footer: Settings shortcut
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const settingsItem = new PopupMenu.PopupMenuItem(_('Configuración de Notificaciones...'));
+        const settingsIcon = new St.Icon({
+            icon_name: 'preferences-system-notifications-symbolic',
+            fallback_icon_name: 'emblem-system-symbolic',
+            icon_size: 14,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        settingsItem.insert_child_at_index(settingsIcon, 0);
+        settingsItem.connect('activate', () => {
+            menu.close();
+            this._runCommandAsync(['gnome-control-center', 'notifications']);
+        });
+        menu.addMenuItem(settingsItem);
+
+        this._registerMenu(menu);
+    }
+
+    _rebuildNotificationsList() {
+        if (!this._notificationsListBox) return;
+        this._notificationsListBox.destroy_all_children();
+
+        const notifs = this._getAllNotifications();
+
+        if (this._notificationsClearAllBtn) {
+            this._notificationsClearAllBtn.visible = notifs.length > 0;
+        }
+
+        if (notifs.length === 0) {
+            const placeholder = new St.BoxLayout({
+                vertical: true,
+                x_expand: true,
+                y_align: Clutter.ActorAlign.CENTER,
+                x_align: Clutter.ActorAlign.CENTER,
+                style: 'padding: 32px 16px; spacing: 8px;',
+            });
+
+            const emptyIcon = new St.Icon({
+                icon_name: 'notifications-disabled-symbolic',
+                fallback_icon_name: 'preferences-system-notifications-symbolic',
+                icon_size: 32,
+                style: 'opacity: 0.5;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            placeholder.add_child(emptyIcon);
+
+            const emptyTitle = new St.Label({
+                text: _('No hay notificaciones'),
+                style: 'font-size: 13px; font-weight: 700; opacity: 0.75;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            placeholder.add_child(emptyTitle);
+
+            const emptySub = new St.Label({
+                text: _('Todas las notificaciones al día'),
+                style: 'font-size: 11px; opacity: 0.5;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            placeholder.add_child(emptySub);
+
+            this._notificationsListBox.add_child(placeholder);
+            return;
+        }
+
+        for (const item of notifs) {
+            const { source, notif } = item;
+
+            const card = new St.BoxLayout({
+                vertical: true,
+                x_expand: true,
+                style_class: 'wave-notification-card',
+            });
+
+            // Top row: App icon, app title, time, close button
+            const topRow = new St.BoxLayout({
+                vertical: false,
+                x_expand: true,
+                y_align: Clutter.ActorAlign.CENTER,
+                style: 'spacing: 4px;',
+            });
+
+            let appIcon = null;
+            if (notif.gicon) {
+                appIcon = new St.Icon({ gicon: notif.gicon, icon_size: 14 });
+            } else if (source && source.icon) {
+                appIcon = new St.Icon({ gicon: source.icon, icon_size: 14 });
+            } else {
+                appIcon = new St.Icon({
+                    icon_name: 'preferences-system-notifications-symbolic',
+                    icon_size: 14,
+                });
+            }
+            topRow.add_child(appIcon);
+
+            const appName = new St.Label({
+                text: (source && source.title) ? source.title : _('Sistema'),
+                style_class: 'wave-notification-app-name',
+                y_align: Clutter.ActorAlign.CENTER,
+                x_align: Clutter.ActorAlign.START,
+            });
+            appName.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+            topRow.add_child(appName);
+
+            const dotLabel = new St.Label({
+                text: '•',
+                style: 'opacity: 0.4; font-size: 10px;',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            topRow.add_child(dotLabel);
+
+            const timeLabel = new St.Label({
+                text: this._formatNotificationTime(notif.datetime),
+                style_class: 'wave-wifi-item-rate',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            topRow.add_child(timeLabel);
+
+            const topSpacer = new St.Widget({ x_expand: true });
+            topRow.add_child(topSpacer);
+
+            // Individual delete button
+            const closeBtn = new St.Button({
+                style_class: 'wave-wifi-action-btn',
+                can_focus: true,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            const closeIcon = new St.Icon({
+                icon_name: 'window-close-symbolic',
+                icon_size: 11,
+            });
+            closeBtn.set_child(closeIcon);
+            closeBtn.connect('clicked', () => {
+                try {
+                    notif.destroy();
+                } catch (e) {
+                    console.warn('[WaveTopBar] Error dismissing notification:', e);
+                }
+                this._updateNotificationBadge();
+                this._rebuildNotificationsList();
+            });
+            topRow.add_child(closeBtn);
+
+            card.add_child(topRow);
+
+            // Notification content button (activates notification when clicked)
+            const contentBtn = new St.Button({
+                can_focus: true,
+                x_expand: true,
+                style: 'background-color: transparent !important; background: transparent !important; border: none !important; box-shadow: none !important; text-align: left; padding: 2px 0;',
+            });
+            const contentBox = new St.BoxLayout({
+                vertical: true,
+                x_expand: true,
+                style: 'spacing: 2px;',
+            });
+
+            if (notif.title) {
+                const titleLabel = new St.Label({
+                    text: notif.title,
+                    style_class: 'wave-notification-title',
+                    x_align: Clutter.ActorAlign.START,
+                });
+                titleLabel.clutter_text.line_wrap = false;
+                titleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+                contentBox.add_child(titleLabel);
+            }
+
+            if (notif.body) {
+                const bodyLabel = new St.Label({
+                    text: notif.body,
+                    style_class: 'wave-notification-body',
+                    x_align: Clutter.ActorAlign.START,
+                });
+                bodyLabel.clutter_text.line_wrap = true;
+                bodyLabel.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+                bodyLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+                contentBox.add_child(bodyLabel);
+            }
+
+            contentBtn.set_child(contentBox);
+            contentBtn.connect('clicked', () => {
+                this._closeAllMenus();
+                try {
+                    notif.activate();
+                } catch (e) {
+                    console.warn('[WaveTopBar] Error activating notification:', e);
+                }
+            });
+            card.add_child(contentBtn);
+
+            // Action buttons (if any)
+            if (notif.actions && notif.actions.length > 0) {
+                const actionsBox = new St.BoxLayout({
+                    vertical: false,
+                    style: 'spacing: 6px; margin-top: 6px;',
+                });
+                for (const action of notif.actions) {
+                    const actionBtn = new St.Button({
+                        label: action.label,
+                        style_class: 'wave-wifi-connect-btn',
+                        can_focus: true,
+                    });
+                    actionBtn.connect('clicked', () => {
+                        this._closeAllMenus();
+                        try {
+                            action.activate();
+                        } catch (e) {
+                            console.warn('[WaveTopBar] Error activating action:', e);
+                        }
+                    });
+                    actionsBox.add_child(actionBtn);
+                }
+                card.add_child(actionsBox);
+            }
+
+            this._notificationsListBox.add_child(card);
+        }
+    }
+
     _showClockMenu() {
         this._closeAllMenus();
 
@@ -3081,6 +3676,7 @@ export default class WaveTopBarExtension extends Extension {
         const showBt = this._settings.get_boolean('show-bluetooth');
         const showVol = this._settings.get_boolean('show-volume');
         const showBat = this._settings.get_boolean('show-battery');
+        const showNotif = this._settings.get_boolean('show-notifications');
         const showCC = this._settings.get_boolean('show-control-center');
         const showClock = this._settings.get_boolean('show-clock');
 
@@ -3091,6 +3687,7 @@ export default class WaveTopBarExtension extends Extension {
         if (this._bluetoothBtn) this._bluetoothBtn.visible = showBt;
         if (this._volumeBtn) this._volumeBtn.visible = showVol;
         if (this._batteryBtn) this._batteryBtn.visible = showBat;
+        if (this._notificationsBtn) this._notificationsBtn.visible = showNotif;
         if (this._controlCenterBtn) this._controlCenterBtn.visible = showCC;
         if (this._clockBtn) this._clockBtn.visible = showClock;
     }
@@ -3710,6 +4307,11 @@ export default class WaveTopBarExtension extends Extension {
             this._batteryMenu.destroy();
             this._batteryMenu = null;
         }
+        if (this._notificationsMenu) {
+            this._notificationsMenu.close();
+            this._notificationsMenu.destroy();
+            this._notificationsMenu = null;
+        }
         if (this._volumeMenu) {
             this._volumeMenu.close();
             this._volumeMenu.destroy();
@@ -4085,6 +4687,7 @@ export default class WaveTopBarExtension extends Extension {
             this._bluetoothBtn,
             this._volumeBtn,
             this._batteryBtn,
+            this._notificationsBtn,
             this._controlCenterBtn,
             this._clockBtn,
         ];
@@ -4224,6 +4827,16 @@ export default class WaveTopBarExtension extends Extension {
         this._volumeMenu = null;
         this._volumeBtn = null;
         this._volumeIcon = null;
+
+        // Teardown notifications & banner placement
+        this._teardownNotificationTracking();
+        this._restoreNotificationBanners();
+        this._notificationsBtn = null;
+        this._notificationsIcon = null;
+        this._notificationsBadge = null;
+        this._notificationsMenu = null;
+        this._notificationsListBox = null;
+        this._notificationsClearAllBtn = null;
 
         this._upowerProxy = null;
         this._powerProfilesProxy = null;
