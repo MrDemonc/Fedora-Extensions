@@ -72,6 +72,7 @@ export default class WaveTopBarExtension extends Extension {
         this._notificationsBadge = null;
         this._trackedSources = null;
         this._notifSignals = [];
+        this._activePolls = [];
         this._origUpdateShowingNotification = null;
         this._origBannerBinXAlign = null;
         this._origBannerBinMarginRight = null;
@@ -2927,6 +2928,7 @@ export default class WaveTopBarExtension extends Extension {
 
         this._trackedSources = new Set();
         this._notifSignals = [];
+        this._activePolls = [];
 
         const onSourcesChanged = () => {
             this._updateNotificationBadge();
@@ -2939,12 +2941,37 @@ export default class WaveTopBarExtension extends Extension {
             if (!source || this._trackedSources.has(source)) return;
             this._trackedSources.add(source);
 
-            const addedId = source.connect('notification-added', onSourcesChanged);
+            const notifActivatedHandler = (notif) => {
+                if (!notif || notif._waveActivatedConnected) return;
+                notif._waveActivatedConnected = true;
+                const actId = notif.connect('activated', () => {
+                    const now = Date.now();
+                    if (source._waveLastActivated && (now - source._waveLastActivated) < 1000) {
+                        return;
+                    }
+                    source._waveLastActivated = now;
+                    const { app, appId, appInfo } = this._resolveAppForNotification(source, notif);
+                    this._launchAndActivateApp(app, appId, appInfo, source);
+                });
+                if (!notif._waveSignals) notif._waveSignals = [];
+                notif._waveSignals.push(actId);
+            };
+
+            const addedId = source.connect('notification-added', (_src, notif) => {
+                if (notif) notifActivatedHandler(notif);
+                onSourcesChanged();
+            });
             const removedId = source.connect('notification-removed', onSourcesChanged);
             const destroyId = source.connect('destroy', () => {
                 this._trackedSources.delete(source);
                 onSourcesChanged();
             });
+
+            if (source.notifications) {
+                for (const n of source.notifications) {
+                    notifActivatedHandler(n);
+                }
+            }
 
             source._waveNotifSignals = [addedId, removedId, destroyId];
         };
@@ -2981,6 +3008,12 @@ export default class WaveTopBarExtension extends Extension {
             }
             this._notifSignals = [];
         }
+        if (this._activePolls) {
+            for (const id of this._activePolls) {
+                try { GLib.source_remove(id); } catch (e) {}
+            }
+            this._activePolls = [];
+        }
         if (this._trackedSources) {
             for (const source of this._trackedSources) {
                 if (source._waveNotifSignals) {
@@ -2989,6 +3022,18 @@ export default class WaveTopBarExtension extends Extension {
                     }
                     delete source._waveNotifSignals;
                 }
+                if (source.notifications) {
+                    for (const n of source.notifications) {
+                        if (n._waveSignals) {
+                            for (const id of n._waveSignals) {
+                                try { n.disconnect(id); } catch (e) {}
+                            }
+                            delete n._waveSignals;
+                            delete n._waveActivatedConnected;
+                        }
+                    }
+                }
+                delete source._waveLastActivated;
             }
             this._trackedSources.clear();
             this._trackedSources = null;
@@ -3089,8 +3134,301 @@ export default class WaveTopBarExtension extends Extension {
         }
     }
 
+    _resolveAppForNotification(source, notif) {
+        let app = source?.app || source?._app || notif?.source?.app || notif?.source?._app;
+        let appId = source?._appId;
+        let appInfo = null;
+
+        const appSys = Shell.AppSystem.get_default();
+
+        // 1. If we have appId, look up in AppSystem or Gio.DesktopAppInfo
+        if (appId) {
+            if (!app) {
+                app = appSys.lookup_app(`${appId}.desktop`) ||
+                      appSys.lookup_app(appId);
+            }
+            if (!appInfo) {
+                try {
+                    appInfo = Gio.DesktopAppInfo.new(`${appId}.desktop`) ||
+                              Gio.DesktopAppInfo.new(appId);
+                } catch (e) {}
+            }
+        }
+
+        // 2. Check title / app name candidates
+        const rawCandidates = [
+            source?.title,
+            source?._appName,
+            notif?.title,
+        ];
+        const candidates = rawCandidates
+            .filter(Boolean)
+            .map(s => String(s).trim().toLowerCase())
+            .filter(s => s.length > 0);
+
+        if ((!app || !appInfo) && candidates.length > 0) {
+            // Check running ShellApps
+            const running = appSys.get_running();
+            for (const cand of candidates) {
+                for (const r of running) {
+                    const rName = (r.get_name() || '').toLowerCase();
+                    const rId = (r.get_id() || '').toLowerCase();
+                    if (rName === cand || rId.includes(cand) || cand.includes(rName)) {
+                        if (!app) app = r;
+                        break;
+                    }
+                }
+                if (app) break;
+            }
+
+            // Check installed ShellApps
+            if (!app) {
+                const installed = appSys.get_installed();
+                for (const cand of candidates) {
+                    for (const ins of installed) {
+                        const insName = (ins.get_name() || '').toLowerCase();
+                        const insId = (ins.get_id() || '').toLowerCase();
+                        if (insName === cand || insId.includes(cand) || cand.includes(insName)) {
+                            app = ins;
+                            break;
+                        }
+                    }
+                    if (app) break;
+                }
+            }
+
+            // Check Gio.AppInfo.get_all()
+            if (!appInfo) {
+                try {
+                    const allAppInfos = Gio.AppInfo.get_all();
+                    for (const cand of candidates) {
+                        for (const info of allAppInfos) {
+                            const name = (info.get_name() || '').toLowerCase();
+                            const id = (info.get_id() || '').toLowerCase();
+                            if (name === cand || id.includes(cand) || cand.includes(name)) {
+                                appInfo = info;
+                                if (!appId) appId = info.get_id() ? info.get_id().replace('.desktop', '') : null;
+                                if (!app && info.get_id()) {
+                                    app = appSys.lookup_app(info.get_id());
+                                }
+                                break;
+                            }
+                        }
+                        if (appInfo) break;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        // 3. Well-known fallbacks for common apps
+        if (!app && !appInfo && candidates.length > 0) {
+            for (const cand of candidates) {
+                if (cand.includes('thunderbird')) {
+                    app = appSys.lookup_app('org.mozilla.thunderbird.desktop');
+                    appId = 'org.mozilla.thunderbird';
+                    try { appInfo = Gio.DesktopAppInfo.new('org.mozilla.thunderbird.desktop'); } catch (e) {}
+                    break;
+                } else if (cand.includes('zen')) {
+                    app = appSys.lookup_app('app.zen_browser.zen.desktop');
+                    appId = 'app.zen_browser.zen';
+                    try { appInfo = Gio.DesktopAppInfo.new('app.zen_browser.zen.desktop'); } catch (e) {}
+                    break;
+                } else if (cand.includes('discord')) {
+                    app = appSys.lookup_app('com.discordapp.Discord.desktop');
+                    appId = 'com.discordapp.Discord';
+                    try { appInfo = Gio.DesktopAppInfo.new('com.discordapp.Discord.desktop'); } catch (e) {}
+                    break;
+                } else if (cand.includes('telegram')) {
+                    app = appSys.lookup_app('org.telegram.desktop.desktop');
+                    appId = 'org.telegram.desktop';
+                    try { appInfo = Gio.DesktopAppInfo.new('org.telegram.desktop.desktop'); } catch (e) {}
+                    break;
+                }
+            }
+        }
+
+        if (app && !appInfo && typeof app.get_app_info === 'function') {
+            try { appInfo = app.get_app_info(); } catch (e) {}
+        }
+        if (app && !appId && typeof app.get_id === 'function') {
+            try { appId = app.get_id().replace('.desktop', ''); } catch (e) {}
+        }
+
+        return { app, appId, appInfo };
+    }
+
+    _findWindowForApp(app, appId, source) {
+        // 1. Direct app windows from ShellApp
+        if (app && typeof app.get_windows === 'function') {
+            try {
+                const wins = app.get_windows();
+                if (wins && wins.length > 0) {
+                    return wins[0];
+                }
+            } catch (e) {}
+        }
+
+        // 2. Global display tab list in Mutter
+        try {
+            const display = global.display;
+            if (display && typeof display.get_tab_list === 'function') {
+                const windows = display.get_tab_list(Meta.TabList.NORMAL, null);
+                const tracker = Shell.WindowTracker.get_default();
+
+                // A. Check WindowTracker association
+                if (app) {
+                    for (const win of windows) {
+                        try {
+                            if (tracker.get_window_app(win) === app) {
+                                return win;
+                            }
+                        } catch (e) {}
+                    }
+                }
+
+                // B. Check sandboxed app ID, wm_class, or window title
+                const rawKeys = [
+                    appId,
+                    source?._appId,
+                    source?.title,
+                    source?._appName,
+                    app ? app.get_id() : null,
+                    app ? app.get_name() : null,
+                ];
+                const cleanKeys = rawKeys
+                    .filter(Boolean)
+                    .map(k => String(k).trim().toLowerCase().replace('.desktop', ''))
+                    .filter(k => k.length > 1);
+
+                for (const win of windows) {
+                    try {
+                        const sandboxed = (typeof win.get_sandboxed_app_id === 'function' ? (win.get_sandboxed_app_id() || '') : '').toLowerCase();
+                        const wmClass = (typeof win.get_wm_class === 'function' ? (win.get_wm_class() || '') : '').toLowerCase();
+                        const winTitle = (typeof win.get_title === 'function' ? (win.get_title() || '') : '').toLowerCase();
+
+                        for (const key of cleanKeys) {
+                            if (sandboxed && (sandboxed === key || sandboxed.includes(key) || key.includes(sandboxed))) {
+                                return win;
+                            }
+                            if (wmClass && (wmClass === key || wmClass.includes(key) || key.includes(wmClass))) {
+                                return win;
+                            }
+                            if (winTitle && winTitle.includes(key)) {
+                                return win;
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        } catch (e) {
+            console.warn('[WaveTopBar] Error in _findWindowForApp:', e);
+        }
+
+        return null;
+    }
+
+    _launchAndActivateApp(app, appId, appInfo, source) {
+        // 1. If window already exists, activate immediately!
+        const existingWin = this._findWindowForApp(app, appId, source);
+        if (existingWin) {
+            try {
+                if (existingWin.minimized) existingWin.unminimize();
+                Main.activateWindow(existingWin);
+            } catch (e) {
+                console.warn('[WaveTopBar] Error activating existing window:', e);
+            }
+
+            // Wayland secondary focus tick
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
+                try {
+                    if (existingWin.minimized) existingWin.unminimize();
+                    Main.activateWindow(existingWin);
+                } catch (e) {}
+                return GLib.SOURCE_REMOVE;
+            });
+            return;
+        }
+
+        // 2. Window does NOT exist yet. App needs to be launched or forwarded.
+        let launched = false;
+        const context = global.create_app_launch_context(0, -1);
+
+        // A. Launch via appInfo (spawns desktop file Exec command directly)
+        if (appInfo && typeof appInfo.launch === 'function') {
+            try {
+                appInfo.launch([], context);
+                launched = true;
+            } catch (err) {
+                console.warn('[WaveTopBar] appInfo.launch failed:', err);
+            }
+        }
+
+        // B. Launch via ShellApp open_new_window / activate
+        if (!launched && app) {
+            try {
+                if (typeof app.open_new_window === 'function') {
+                    app.open_new_window(-1);
+                    launched = true;
+                } else if (typeof app.activate === 'function') {
+                    app.activate();
+                    launched = true;
+                }
+            } catch (err) {
+                console.warn('[WaveTopBar] app.open_new_window/activate failed:', err);
+            }
+        }
+
+        // C. Fallback: Flatpak run command
+        if (!launched) {
+            const fId = appId || source?._appId;
+            if (fId) {
+                try {
+                    GLib.spawn_command_line_async(`flatpak run ${fId}`);
+                    launched = true;
+                } catch (err) {
+                    console.warn('[WaveTopBar] flatpak run failed:', err);
+                }
+            }
+        }
+
+        // D. Fallback: source.open()
+        if (!launched && typeof source?.open === 'function') {
+            try {
+                source.open();
+                launched = true;
+            } catch (err) {}
+        }
+
+        // 3. Polling watcher: wait for new window to map and activate it immediately
+        let pollCount = 0;
+        if (!this._activePolls) this._activePolls = [];
+
+        const pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+            pollCount++;
+            try {
+                const win = this._findWindowForApp(app, appId, source);
+                if (win) {
+                    if (win.minimized) win.unminimize();
+                    Main.activateWindow(win);
+                    return GLib.SOURCE_REMOVE;
+                }
+            } catch (e) {}
+
+            if (pollCount >= 15) { // 3 seconds timeout
+                return GLib.SOURCE_REMOVE;
+            }
+            return GLib.SOURCE_CONTINUE;
+        });
+        this._activePolls.push(pollId);
+    }
+
     _activateNotification(source, notif) {
         this._closeAllMenus();
+
+        const { app, appId, appInfo } = this._resolveAppForNotification(source, notif);
+
+        if (source) source._waveLastActivated = Date.now();
+
         try {
             if (notif && typeof notif.activate === 'function') {
                 notif.activate();
@@ -3099,65 +3437,12 @@ export default class WaveTopBarExtension extends Extension {
             console.warn('[WaveTopBar] Error calling notif.activate():', e);
         }
 
-        this._activateNotificationApp(source, notif);
+        this._launchAndActivateApp(app, appId, appInfo, source);
     }
 
     _activateNotificationApp(source, notif) {
-        if (!source) return;
-
-        try {
-            let app = source.app || source._app;
-
-            if (!app && source.title) {
-                const appSys = Shell.AppSystem.get_default();
-                const running = appSys.get_running();
-                const sTitle = source.title.toLowerCase();
-                for (const r of running) {
-                    const rName = (r.get_name() || '').toLowerCase();
-                    const rId = (r.get_id() || '').toLowerCase();
-                    if (rName === sTitle || rId.includes(sTitle) || sTitle.includes(rName)) {
-                        app = r;
-                        break;
-                    }
-                }
-                if (!app) {
-                    const installed = appSys.get_installed();
-                    for (const ins of installed) {
-                        const insName = (ins.get_name() || '').toLowerCase();
-                        if (insName === sTitle || ins.get_id().toLowerCase().includes(sTitle)) {
-                            app = ins;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (app) {
-                const windows = app.get_windows ? app.get_windows() : [];
-                if (windows && windows.length > 0) {
-                    Main.activateWindow(windows[0]);
-                } else {
-                    app.activate();
-                }
-
-                // Brief delayed re-check for Wayland mapping
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
-                    try {
-                        const wins = app.get_windows ? app.get_windows() : [];
-                        if (wins && wins.length > 0) {
-                            Main.activateWindow(wins[0]);
-                        }
-                    } catch (err) {}
-                    return GLib.SOURCE_REMOVE;
-                });
-            } else if (typeof source.open === 'function') {
-                source.open();
-            } else if (typeof source.openApp === 'function') {
-                source.openApp();
-            }
-        } catch (e) {
-            console.warn('[WaveTopBar] Error bringing notification app to front:', e);
-        }
+        const { app, appId, appInfo } = this._resolveAppForNotification(source, notif);
+        this._launchAndActivateApp(app, appId, appInfo, source);
     }
 
     _toggleNotificationsMenu() {
