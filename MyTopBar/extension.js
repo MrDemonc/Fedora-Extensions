@@ -2853,6 +2853,9 @@ export default class WaveTopBarExtension extends Extension {
                 this._origBannerBinMarginRight = Main.messageTray._bannerBin.margin_right;
                 Main.messageTray._bannerBin.x_align = Clutter.ActorAlign.END;
                 Main.messageTray._bannerBin.margin_right = 16;
+                const isLight = Boolean(this._isLightMode);
+                Main.messageTray._bannerBin.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+                Main.messageTray._bannerBin.remove_style_class_name(isLight ? 'theme-dark' : 'theme-light');
             }
 
             const self = this;
@@ -2866,6 +2869,16 @@ export default class WaveTopBarExtension extends Extension {
                 if (this._notification.urgency === MessageTray.Urgency.CRITICAL ||
                     this._notification.source.policy.forceExpanded)
                     this._expandBanner(true);
+
+                const isLight = Boolean(self._isLightMode);
+                if (this._bannerBin) {
+                    this._bannerBin.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+                    this._bannerBin.remove_style_class_name(isLight ? 'theme-dark' : 'theme-light');
+                }
+                if (this._banner) {
+                    this._banner.add_style_class_name(isLight ? 'theme-light' : 'theme-dark');
+                    this._banner.remove_style_class_name(isLight ? 'theme-dark' : 'theme-light');
+                }
 
                 this._notificationState = MessageTray.State.SHOWING;
                 this._bannerBin.remove_all_transitions();
@@ -3234,8 +3247,6 @@ export default class WaveTopBarExtension extends Extension {
         scrollItem.add_child(scrollView);
         menu.addMenuItem(scrollItem);
 
-        this._rebuildNotificationsList();
-
         // 3. Footer: Settings shortcut
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         const settingsItem = new PopupMenu.PopupMenuItem(_('Configuración de Notificaciones...'));
@@ -3253,14 +3264,24 @@ export default class WaveTopBarExtension extends Extension {
         });
         menu.addMenuItem(settingsItem);
 
+        // Fetch notifications once and sync clear button
+        const notifs = this._getAllNotifications();
+        if (this._notificationsClearAllBtn) {
+            this._notificationsClearAllBtn.visible = notifs.length > 0;
+        }
+
+        // Register menu into uiGroup FIRST so stage & styles are resolved without lag
         this._registerMenu(menu);
+
+        // Populate notification cards
+        this._rebuildNotificationsList(notifs);
     }
 
-    _rebuildNotificationsList() {
+    _rebuildNotificationsList(cachedNotifs) {
         if (!this._notificationsListBox) return;
         this._notificationsListBox.destroy_all_children();
 
-        const notifs = this._getAllNotifications();
+        const notifs = cachedNotifs !== undefined ? cachedNotifs : this._getAllNotifications();
 
         if (this._notificationsClearAllBtn) {
             this._notificationsClearAllBtn.visible = notifs.length > 0;
@@ -3331,13 +3352,13 @@ export default class WaveTopBarExtension extends Extension {
             }
             topRow.add_child(appIcon);
 
+            const rawSource = (source && source.title) ? source.title : _('Sistema');
             const appName = new St.Label({
-                text: (source && source.title) ? source.title : _('Sistema'),
+                text: rawSource.length > 25 ? rawSource.slice(0, 25) + '…' : rawSource,
                 style_class: 'wave-notification-app-name',
                 y_align: Clutter.ActorAlign.CENTER,
                 x_align: Clutter.ActorAlign.START,
             });
-            appName.clutter_text.ellipsize = Pango.EllipsizeMode.END;
             topRow.add_child(appName);
 
             const dotLabel = new St.Label({
@@ -3394,25 +3415,23 @@ export default class WaveTopBarExtension extends Extension {
             });
 
             if (notif.title) {
+                const rawTitle = notif.title;
                 const titleLabel = new St.Label({
-                    text: notif.title,
+                    text: rawTitle.length > 70 ? rawTitle.slice(0, 70) + '…' : rawTitle,
                     style_class: 'wave-notification-title',
                     x_align: Clutter.ActorAlign.START,
                 });
-                titleLabel.clutter_text.line_wrap = false;
-                titleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                 contentBox.add_child(titleLabel);
             }
 
             if (notif.body) {
+                const rawBody = notif.body;
                 const bodyLabel = new St.Label({
-                    text: notif.body,
+                    text: rawBody.length > 180 ? rawBody.slice(0, 180) + '…' : rawBody,
                     style_class: 'wave-notification-body',
                     x_align: Clutter.ActorAlign.START,
                 });
                 bodyLabel.clutter_text.line_wrap = true;
-                bodyLabel.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
-                bodyLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                 contentBox.add_child(bodyLabel);
             }
 
@@ -3648,10 +3667,21 @@ export default class WaveTopBarExtension extends Extension {
         if (this._wifiMenu && this._wifiMenu.isOpen) updateMenuTheme(this._wifiMenu);
         if (this._volumeMenu && this._volumeMenu.isOpen) updateMenuTheme(this._volumeMenu);
         if (this._batteryMenu && this._batteryMenu.isOpen) updateMenuTheme(this._batteryMenu);
+        if (this._notificationsMenu && this._notificationsMenu.isOpen) updateMenuTheme(this._notificationsMenu);
         if (this._clockMenu && this._clockMenu.isOpen) updateMenuTheme(this._clockMenu);
         if (this._systemMenu && this._systemMenu.isOpen) updateMenuTheme(this._systemMenu);
         if (this._appMenu && this._appMenu.isOpen) updateMenuTheme(this._appMenu);
         if (this._contextMenu && this._contextMenu.isOpen) updateMenuTheme(this._contextMenu);
+
+        if (Main.messageTray?._bannerBin) {
+            if (isLightMode) {
+                Main.messageTray._bannerBin.add_style_class_name('theme-light');
+                Main.messageTray._bannerBin.remove_style_class_name('theme-dark');
+            } else {
+                Main.messageTray._bannerBin.add_style_class_name('theme-dark');
+                Main.messageTray._bannerBin.remove_style_class_name('theme-light');
+            }
+        }
 
         // macOS Acrylic Glassmorphism styling (clean bottom separation border only, no top highlights)
         const borderColor = isLightMode ? 'rgba(0, 0, 0, 0.10)' : 'rgba(255, 255, 255, 0.14)';

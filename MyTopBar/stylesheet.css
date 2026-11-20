@@ -974,9 +974,136 @@
     margin-right: 16px !important;
 }
 
-#notification-container .notification-banner {
+#notification-container .notification-banner,
+.notification-banner {
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    min-height: 48px !important;
+    padding: 10px 14px !important;
+    margin: 0 !important;
     border-radius: 14px !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+#notification-container .notification-banner .message-box {
+    spacing: 10px !important;
+}
+
+#notification-container .notification-banner .message-icon {
+    icon-size: 20px !important;
+}
+
+#notification-container .notification-banner .message-title {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+}
+
+#notification-container .notification-banner .message-body {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+}
+
+#notification-container .notification-banner .message-header {
+    margin-bottom: 2px !important;
+}
+
+#notification-container .notification-banner .message-header StLabel {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Light Theme Banner */
+#notification-container.theme-light .notification-banner,
+.notification-banner.theme-light {
+    background-color: #f6f6f8 !important;
+    background: #f6f6f8 !important;
+    color: #1c1c1e !important;
+    border: 1px solid rgba(0, 0, 0, 0.14) !important;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.16) !important;
+}
+
+#notification-container.theme-light .notification-banner .message-header,
+#notification-container.theme-light .notification-banner .message-header StLabel,
+.notification-banner.theme-light .message-header StLabel {
+    color: #0071e3 !important;
+}
+
+#notification-container.theme-light .notification-banner .message-title,
+.notification-banner.theme-light .message-title {
+    color: #1c1c1e !important;
+}
+
+#notification-container.theme-light .notification-banner .message-body,
+.notification-banner.theme-light .message-body {
+    color: #3a3a3c !important;
+}
+
+#notification-container.theme-light .notification-banner StIcon,
+.notification-banner.theme-light StIcon {
+    color: #1c1c1e !important;
+}
+
+#notification-container.theme-light .notification-banner .notification-button,
+.notification-banner.theme-light .notification-button {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+    color: #1c1c1e !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+}
+
+#notification-container.theme-light .notification-banner .notification-button:hover,
+.notification-banner.theme-light .notification-button:hover {
+    background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Dark Theme Banner */
+#notification-container.theme-dark .notification-banner,
+.notification-banner.theme-dark {
+    background-color: #242428 !important;
+    background: #242428 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;
+}
+
+#notification-container.theme-dark .notification-banner .message-header,
+#notification-container.theme-dark .notification-banner .message-header StLabel,
+.notification-banner.theme-dark .message-header StLabel {
+    color: #0a84ff !important;
+}
+
+#notification-container.theme-dark .notification-banner .message-title,
+.notification-banner.theme-dark .message-title {
+    color: #ffffff !important;
+}
+
+#notification-container.theme-dark .notification-banner .message-body,
+.notification-banner.theme-dark .message-body {
+    color: #d1d1d6 !important;
+}
+
+#notification-container.theme-dark .notification-banner StIcon,
+.notification-banner.theme-dark StIcon {
+    color: #ffffff !important;
+}
+
+#notification-container.theme-dark .notification-banner .notification-button,
+.notification-banner.theme-dark .notification-button {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    padding: 3px 10px !important;
+}
+
+#notification-container.theme-dark .notification-banner .notification-button:hover,
+.notification-banner.theme-dark .notification-button:hover {
+    background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .wave-topbar-badge {
