@@ -3146,8 +3146,8 @@ export default class WaveTopBarExtension extends Extension {
         const scrollItem = new PopupMenu.PopupBaseMenuItem({
             reactive: false,
             can_focus: false,
-            style: 'padding: 0 !important; margin: 0 !important;',
         });
+        scrollItem.style = 'padding: 0 !important; margin: 0 !important;';
         const scrollView = new St.ScrollView({
             overlay_scrollbars: true,
             x_expand: true,
@@ -3159,7 +3159,7 @@ export default class WaveTopBarExtension extends Extension {
             x_expand: true,
             y_expand: true,
         });
-        scrollView.add_child(this._notificationsListBox);
+        scrollView.set_child(this._notificationsListBox);
         scrollItem.add_child(scrollView);
         menu.addMenuItem(scrollItem);
 
