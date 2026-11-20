@@ -37,6 +37,7 @@ import { PointerTracker } from './pointerTracker.js';
 import Gvc from 'gi://Gvc';
 import { getMixerControl } from 'resource:///org/gnome/shell/ui/status/volume.js';
 import { Slider } from 'resource:///org/gnome/shell/ui/slider.js';
+import * as Mpris from 'resource:///org/gnome/shell/ui/mpris.js';
 
 export default class WaveTopBarExtension extends Extension {
     enable() {
@@ -87,6 +88,22 @@ export default class WaveTopBarExtension extends Extension {
         this._isDraggingOutputSlider = false;
         this._isDraggingInputSlider = false;
         this._syncingVolumeUI = false;
+
+        // MPRIS Media control state
+        this._mediaBox = null;
+        this._mediaTitleBtn = null;
+        this._mediaLabel = null;
+        this._mediaIcon = null;
+        this._mediaPlayPauseBtn = null;
+        this._mediaPlayPauseIcon = null;
+        this._mediaMenu = null;
+        this._mprisSource = null;
+        this._mprisSignals = [];
+        this._trackedPlayers = null;
+        this._activePlayer = null;
+        this._mediaProgressTimer = null;
+        this._isDraggingMediaSlider = false;
+        this._mediaTotalLength = 0;
 
         try {
             this._audioControl = getMixerControl();
@@ -298,6 +315,9 @@ export default class WaveTopBarExtension extends Extension {
         // Notification Center & Banner placement
         this._setupNotificationBanners();
         this._setupNotificationTracking();
+
+        // MPRIS Media Control
+        this._setupMediaControl();
     }
 
     _buildTopBar() {
@@ -371,6 +391,71 @@ export default class WaveTopBarExtension extends Extension {
         });
         this._contentBox.add_child(this._centerBox);
         this._centerBox.connect('button-press-event', handleRightClick);
+
+        // Media Player TopBar Pill (Centered, visible when media is active)
+        this._mediaBox = new St.BoxLayout({
+            style_class: 'wave-topbar-media-pill',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+            reactive: true,
+        });
+
+        // 1. Media Title Button (Icon + Track Name -> Opens Popup Menu)
+        this._mediaTitleBtn = new St.Button({
+            style_class: 'wave-topbar-btn wave-topbar-media-title-btn',
+            can_focus: false,
+            track_hover: false,
+            y_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        const titleBtnBox = new St.BoxLayout({
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 5px;',
+        });
+
+        this._mediaIcon = new St.Icon({
+            icon_name: 'audio-x-generic-symbolic',
+            fallback_icon_name: 'media-playback-start-symbolic',
+            icon_size: 11,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        titleBtnBox.add_child(this._mediaIcon);
+
+        this._mediaLabel = new St.Label({
+            text: '',
+            style_class: 'wave-topbar-media-label',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        titleBtnBox.add_child(this._mediaLabel);
+        this._mediaTitleBtn.set_child(titleBtnBox);
+
+        this._mediaTitleBtn.connect('clicked', () => this._toggleMediaMenu());
+        this._mediaTitleBtn.connect('button-press-event', handleRightClick);
+        this._mediaBox.add_child(this._mediaTitleBtn);
+
+        // 2. Play/Pause Button on Bar (Toggles Play/Pause directly)
+        this._mediaPlayPauseBtn = new St.Button({
+            style_class: 'wave-topbar-btn wave-topbar-media-play-btn',
+            can_focus: false,
+            track_hover: false,
+            y_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._mediaPlayPauseIcon = new St.Icon({
+            icon_name: 'media-playback-pause-symbolic',
+            fallback_icon_name: 'media-playback-start-symbolic',
+            icon_size: 11,
+            style_class: 'wave-topbar-icon',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._mediaPlayPauseBtn.set_child(this._mediaPlayPauseIcon);
+        this._mediaPlayPauseBtn.connect('clicked', () => this._toggleMediaPlayPause());
+        this._mediaPlayPauseBtn.connect('button-press-event', handleRightClick);
+        this._mediaBox.add_child(this._mediaPlayPauseBtn);
+
+        this._centerBox.add_child(this._mediaBox);
 
         // Right section (Spotlight, Wi-Fi, Bluetooth, Battery, Control Center, Clock)
         this._rightBox = new St.BoxLayout({
@@ -3755,6 +3840,708 @@ export default class WaveTopBarExtension extends Extension {
         }
     }
 
+    // --- MEDIA PLAYER CONTROL & MENU (MPRIS2) ---
+    _setupMediaControl() {
+        this._trackedPlayers = new Map();
+        this._mprisSignals = [];
+        this._activePlayer = null;
+        this._mediaProgressTimer = null;
+        this._isDraggingMediaSlider = false;
+        this._mediaTotalLength = 0;
+
+        try {
+            this._mprisSource = new Mpris.MprisSource();
+
+            const onPlayerAdded = (player) => {
+                if (!player || this._trackedPlayers.has(player)) return;
+
+                const changedId = player.connect('changed', () => {
+                    this._onPlayerStateChanged(player);
+                });
+                const canPlayId = player.connect('notify::can-play', () => {
+                    this._onPlayerStateChanged(player);
+                });
+
+                this._trackedPlayers.set(player, [changedId, canPlayId]);
+                this._onPlayerStateChanged(player);
+            };
+
+            const onPlayerRemoved = (player) => {
+                if (this._trackedPlayers.has(player)) {
+                    const signalIds = this._trackedPlayers.get(player);
+                    if (signalIds) {
+                        for (const id of signalIds) {
+                            try { player.disconnect(id); } catch (e) {}
+                        }
+                    }
+                    this._trackedPlayers.delete(player);
+                }
+
+                if (this._activePlayer === player) {
+                    this._activePlayer = null;
+                    this._findBestActivePlayer();
+                    this._updateMediaWidget();
+                }
+            };
+
+            const sig1 = this._mprisSource.connect('player-added', (_src, player) => onPlayerAdded(player));
+            const sig2 = this._mprisSource.connect('player-removed', (_src, player) => onPlayerRemoved(player));
+            this._mprisSignals = [sig1, sig2];
+
+            if (this._mprisSource.players) {
+                for (const player of this._mprisSource.players) {
+                    onPlayerAdded(player);
+                }
+            }
+
+            this._findBestActivePlayer();
+            this._updateMediaWidget();
+        } catch (e) {
+            console.warn('[WaveTopBar] Error setting up MPRIS media control:', e);
+        }
+    }
+
+    _teardownMediaControl() {
+        if (this._mediaProgressTimer) {
+            GLib.source_remove(this._mediaProgressTimer);
+            this._mediaProgressTimer = null;
+        }
+
+        if (this._trackedPlayers) {
+            for (const [player, signalIds] of this._trackedPlayers) {
+                if (signalIds) {
+                    for (const id of signalIds) {
+                        try { player.disconnect(id); } catch (e) {}
+                    }
+                }
+            }
+            this._trackedPlayers.clear();
+            this._trackedPlayers = null;
+        }
+
+        if (this._mprisSource) {
+            if (this._mprisSignals) {
+                for (const id of this._mprisSignals) {
+                    try { this._mprisSource.disconnect(id); } catch (e) {}
+                }
+                this._mprisSignals = [];
+            }
+            this._mprisSource = null;
+        }
+
+        this._activePlayer = null;
+    }
+
+    _findBestActivePlayer() {
+        if (!this._mprisSource) return null;
+        const players = this._mprisSource.players || [];
+        if (players.length === 0) {
+            this._activePlayer = null;
+            return null;
+        }
+
+        // 1. Prioritize player that is actively Playing with a track title
+        for (const p of players) {
+            if (p.canPlay && p.status === 'Playing' && p.trackTitle && p.trackTitle.trim().length > 0) {
+                this._activePlayer = p;
+                return p;
+            }
+        }
+
+        // 2. If current active player is still valid and Paused, keep it
+        if (this._activePlayer && players.includes(this._activePlayer) &&
+            this._activePlayer.canPlay && this._activePlayer.status === 'Paused' &&
+            this._activePlayer.trackTitle && this._activePlayer.trackTitle.trim().length > 0) {
+            return this._activePlayer;
+        }
+
+        // 3. Otherwise pick any player that is Paused with a track title
+        for (const p of players) {
+            if (p.canPlay && p.status === 'Paused' && p.trackTitle && p.trackTitle.trim().length > 0) {
+                this._activePlayer = p;
+                return p;
+            }
+        }
+
+        this._activePlayer = null;
+        return null;
+    }
+
+    _onPlayerStateChanged(player) {
+        if (player.status === 'Playing' && player.trackTitle) {
+            this._activePlayer = player;
+        } else {
+            this._findBestActivePlayer();
+        }
+
+        this._updateMediaWidget();
+
+        if (this._mediaMenu && this._mediaMenu.isOpen) {
+            this._syncMediaMenuContent();
+        }
+    }
+
+    _updateMediaWidget() {
+        if (!this._mediaBox) return;
+
+        const player = this._activePlayer;
+        const hasMedia = player &&
+            player.canPlay &&
+            (player.status === 'Playing' || player.status === 'Paused') &&
+            player.trackTitle &&
+            player.trackTitle.trim().length > 0;
+
+        if (!hasMedia) {
+            this._mediaBox.visible = false;
+            if (this._mediaMenu && this._mediaMenu.isOpen) {
+                this._mediaMenu.close();
+            }
+            return;
+        }
+
+        const title = player.trackTitle.trim();
+        const artists = Array.isArray(player.trackArtists)
+            ? player.trackArtists.filter(Boolean).join(', ')
+            : '';
+        const displayText = artists ? `${title} • ${artists}` : title;
+
+        this._mediaLabel.text = displayText.length > 36 ? displayText.slice(0, 35) + '…' : displayText;
+
+        const isPlaying = player.status === 'Playing';
+        this._mediaPlayPauseIcon.icon_name = isPlaying
+            ? 'media-playback-pause-symbolic'
+            : 'media-playback-start-symbolic';
+
+        this._mediaBox.visible = true;
+    }
+
+    _toggleMediaPlayPause() {
+        if (!this._activePlayer) return;
+        try {
+            this._activePlayer.playPause();
+            const isPlaying = this._activePlayer.status === 'Playing';
+            this._mediaPlayPauseIcon.icon_name = isPlaying
+                ? 'media-playback-start-symbolic'
+                : 'media-playback-pause-symbolic';
+        } catch (e) {
+            console.warn('[WaveTopBar] Error toggling media play/pause:', e);
+        }
+    }
+
+    _toggleMediaMenu() {
+        if (this._mediaMenu && this._mediaMenu.isOpen) {
+            this._mediaMenu.close();
+        } else {
+            this._showMediaMenu();
+        }
+    }
+
+    _loadCoverArtAsync(url, callback) {
+        if (!url || typeof url !== 'string') {
+            callback(null);
+            return;
+        }
+
+        if (url.startsWith('file://')) {
+            try {
+                const file = Gio.File.new_for_uri(url);
+                callback(new Gio.FileIcon({ file }));
+            } catch (e) {
+                callback(null);
+            }
+            return;
+        }
+
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            try {
+                const file = Gio.File.new_for_uri(url);
+                callback(new Gio.FileIcon({ file }));
+            } catch (e) {}
+
+            const cacheKey = GLib.compute_checksum_for_string(GLib.ChecksumType.MD5, url, -1);
+            const cachePath = GLib.build_filenamev([GLib.get_tmp_dir(), `wave_cover_${cacheKey}.jpg`]);
+            const cacheFile = Gio.File.new_for_path(cachePath);
+
+            if (cacheFile.query_exists(null)) {
+                callback(new Gio.FileIcon({ file: cacheFile }));
+                return;
+            }
+
+            try {
+                const remoteFile = Gio.File.new_for_uri(url);
+                remoteFile.load_contents_async(null, (_src, res) => {
+                    try {
+                        const [success, contents] = remoteFile.load_contents_finish(res);
+                        if (success && contents) {
+                            cacheFile.replace_contents(
+                                contents,
+                                null,
+                                false,
+                                Gio.FileCreateFlags.REPLACE_DESTINATION,
+                                null
+                            );
+                            callback(new Gio.FileIcon({ file: cacheFile }));
+                        }
+                    } catch (err) {}
+                });
+            } catch (err) {}
+            return;
+        }
+
+        callback(null);
+    }
+
+    _getTrackLength(player) {
+        if (!player || !player._playerProxy) return 0;
+        try {
+            const metadata = player._playerProxy.Metadata;
+            if (metadata && metadata['mpris:length']) {
+                const lenVal = metadata['mpris:length'].deepUnpack();
+                const lenNum = typeof lenVal === 'bigint' || typeof lenVal === 'number' ? Number(lenVal) : 0;
+                return Math.max(0, lenNum / 1000000);
+            }
+        } catch (e) {}
+        return 0;
+    }
+
+    _getPlayerPosition(player, callback) {
+        if (!player || !player._busName) {
+            callback(0);
+            return;
+        }
+        Gio.DBus.session.call(
+            player._busName,
+            '/org/mpris/MediaPlayer2',
+            'org.freedesktop.DBus.Properties',
+            'Get',
+            new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']),
+            null,
+            Gio.DBusCallFlags.NONE,
+            1000,
+            null,
+            (conn, res) => {
+                try {
+                    const reply = conn.call_finish(res);
+                    const [val] = reply.recursiveUnpack();
+                    const posMicro = typeof val === 'bigint' || typeof val === 'number' ? Number(val) : 0;
+                    callback(Math.max(0, posMicro / 1000000));
+                } catch (e) {
+                    callback(0);
+                }
+            }
+        );
+    }
+
+    _setPlayerPosition(player, positionSeconds) {
+        if (!player || !player._busName) return;
+        try {
+            const metadata = player._playerProxy?.Metadata;
+            let trackId = '/';
+            if (metadata && metadata['mpris:trackid']) {
+                const unpacked = metadata['mpris:trackid'].deepUnpack();
+                if (typeof unpacked === 'string') trackId = unpacked;
+            }
+            const posMicro = BigInt(Math.floor(positionSeconds * 1000000));
+            Gio.DBus.session.call(
+                player._busName,
+                '/org/mpris/MediaPlayer2',
+                'org.mpris.MediaPlayer2.Player',
+                'SetPosition',
+                new GLib.Variant('(ox)', [trackId, posMicro]),
+                null,
+                Gio.DBusCallFlags.NONE,
+                1000,
+                null,
+                (conn, res) => {
+                    try { conn.call_finish(res); } catch (err) {}
+                }
+            );
+        } catch (e) {
+            console.warn('[WaveTopBar] Error setting player position:', e);
+        }
+    }
+
+    _formatTime(totalSec) {
+        if (!totalSec || isNaN(totalSec) || totalSec < 0) return '0:00';
+        const s = Math.floor(totalSec % 60);
+        const m = Math.floor((totalSec / 60) % 60);
+        const h = Math.floor(totalSec / 3600);
+        const pad = (n) => (n < 10 ? '0' + n : '' + n);
+        if (h > 0) {
+            return `${h}:${pad(m)}:${pad(s)}`;
+        }
+        return `${m}:${pad(s)}`;
+    }
+
+    _showMediaMenu() {
+        this._closeAllMenus();
+
+        const player = this._activePlayer;
+        if (!player) return;
+
+        const menu = new PopupMenu.PopupMenu(this._mediaTitleBtn, 0.5, St.Side.TOP);
+        this._mediaMenu = menu;
+        menu.actor.add_style_class_name('wave-wifi-menu');
+        menu.actor.add_style_class_name('wave-media-menu');
+        menu.actor.width = 330;
+
+        menu.connect('destroy', () => {
+            if (this._mediaProgressTimer) {
+                GLib.source_remove(this._mediaProgressTimer);
+                this._mediaProgressTimer = null;
+            }
+            if (this._mediaMenu === menu) {
+                this._mediaMenu = null;
+                this._mediaSlider = null;
+                this._mediaCurrentTimeLabel = null;
+                this._mediaTotalTimeLabel = null;
+                this._mediaMenuPlayIcon = null;
+                this._mediaMenuTitleLabel = null;
+                this._mediaMenuArtistLabel = null;
+                this._mediaMenuCoverIcon = null;
+            }
+        });
+
+        // 1. Header: App Icon, App Name, Status Pill
+        const headerItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+            style_class: 'wave-wifi-header-item',
+        });
+        const headerBox = new St.BoxLayout({
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 6px;',
+        });
+
+        let appIcon = null;
+        if (player.source?.icon) {
+            appIcon = new St.Icon({ gicon: player.source.icon, icon_size: 14 });
+        } else {
+            appIcon = new St.Icon({ icon_name: 'audio-x-generic-symbolic', icon_size: 14 });
+        }
+        headerBox.add_child(appIcon);
+
+        const appTitle = new St.Label({
+            text: player.source?.title || player.app?.get_name() || _('Reproductor'),
+            style_class: 'wave-wifi-section-title',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        headerBox.add_child(appTitle);
+
+        headerBox.add_child(new St.Widget({ x_expand: true }));
+
+        const isPlaying = player.status === 'Playing';
+        const statusBadge = new St.Label({
+            text: isPlaying ? _('Reproduciendo') : _('En pausa'),
+            style: 'font-size: 10px; font-weight: 600; opacity: 0.7; padding: 2px 6px; border-radius: 6px; background-color: rgba(255,255,255,0.08);',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        headerBox.add_child(statusBadge);
+
+        headerItem.add_child(headerBox);
+        menu.addMenuItem(headerItem);
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // 2. Track Card (Cover Art + Title + Artist) - Click to raise app window
+        const cardItem = new PopupMenu.PopupBaseMenuItem({
+            style_class: 'wave-media-card-item',
+            can_focus: true,
+        });
+        const cardBox = new St.BoxLayout({
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 12px; padding: 4px;',
+        });
+
+        const coverBin = new St.Bin({
+            style_class: 'wave-media-cover-bin',
+            width: 60,
+            height: 60,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        this._mediaMenuCoverIcon = new St.Icon({
+            icon_name: 'audio-x-generic-symbolic',
+            fallback_icon_name: 'audio-x-generic-symbolic',
+            icon_size: 52,
+            style_class: 'wave-media-cover-icon',
+        });
+        coverBin.set_child(this._mediaMenuCoverIcon);
+        cardBox.add_child(coverBin);
+
+        this._loadCoverArtAsync(player.trackCoverUrl, (gicon) => {
+            if (this._mediaMenuCoverIcon && gicon) {
+                this._mediaMenuCoverIcon.gicon = gicon;
+            }
+        });
+
+        const infoBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 2px;',
+        });
+
+        this._mediaMenuTitleLabel = new St.Label({
+            text: player.trackTitle || _('Sin título'),
+            style_class: 'wave-media-title',
+            x_align: Clutter.ActorAlign.START,
+        });
+        this._mediaMenuTitleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        infoBox.add_child(this._mediaMenuTitleLabel);
+
+        const artistsStr = player.trackArtists?.join(', ') || _('Artista desconocido');
+        this._mediaMenuArtistLabel = new St.Label({
+            text: artistsStr,
+            style_class: 'wave-media-artist',
+            x_align: Clutter.ActorAlign.START,
+        });
+        this._mediaMenuArtistLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        infoBox.add_child(this._mediaMenuArtistLabel);
+
+        cardBox.add_child(infoBox);
+        cardItem.add_child(cardBox);
+        cardItem.connect('activate', () => {
+            menu.close();
+            try { player.raise(); } catch (e) {}
+        });
+        menu.addMenuItem(cardItem);
+
+        // 3. Progress Bar (Seek Slider) & Time Labels
+        const progressItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+        });
+        const progressBox = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+            style: 'spacing: 2px; padding: 4px 6px;',
+        });
+
+        this._mediaTotalLength = this._getTrackLength(player);
+        this._mediaSlider = new Slider(0);
+        this._mediaSlider.add_style_class_name('wave-media-slider');
+
+        this._mediaSlider.connect('drag-begin', () => {
+            this._isDraggingMediaSlider = true;
+        });
+
+        this._mediaSlider.connect('notify::value', () => {
+            if (this._isDraggingMediaSlider && this._mediaTotalLength > 0 && this._mediaCurrentTimeLabel) {
+                const seekPos = this._mediaSlider.value * this._mediaTotalLength;
+                this._mediaCurrentTimeLabel.text = this._formatTime(seekPos);
+            }
+        });
+
+        this._mediaSlider.connect('drag-end', () => {
+            this._isDraggingMediaSlider = false;
+            if (this._activePlayer && this._mediaTotalLength > 0) {
+                const targetPos = this._mediaSlider.value * this._mediaTotalLength;
+                this._setPlayerPosition(this._activePlayer, targetPos);
+            }
+        });
+
+        progressBox.add_child(this._mediaSlider);
+
+        const timeRow = new St.BoxLayout({
+            x_expand: true,
+            style: 'spacing: 4px;',
+        });
+        this._mediaCurrentTimeLabel = new St.Label({
+            text: '0:00',
+            style_class: 'wave-media-time-label',
+        });
+        timeRow.add_child(this._mediaCurrentTimeLabel);
+
+        timeRow.add_child(new St.Widget({ x_expand: true }));
+
+        this._mediaTotalTimeLabel = new St.Label({
+            text: this._formatTime(this._mediaTotalLength),
+            style_class: 'wave-media-time-label',
+        });
+        timeRow.add_child(this._mediaTotalTimeLabel);
+
+        progressBox.add_child(timeRow);
+        progressItem.add_child(progressBox);
+        menu.addMenuItem(progressItem);
+
+        // 4. Playback Controls (Previous, Play/Pause, Next)
+        const controlsItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+            can_focus: false,
+        });
+        const controlsBox = new St.BoxLayout({
+            x_expand: true,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: 'spacing: 20px; padding: 8px 0;',
+        });
+
+        // Previous Button
+        const prevBtn = new St.Button({
+            style_class: 'wave-media-btn',
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const prevIcon = new St.Icon({
+            icon_name: 'media-skip-backward-symbolic',
+            icon_size: 16,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        prevBtn.set_child(prevIcon);
+        prevBtn.reactive = !!player.canGoPrevious;
+        prevBtn.opacity = player.canGoPrevious ? 255 : 100;
+        prevBtn.connect('clicked', () => {
+            try { player.previous(); } catch (e) {}
+        });
+        controlsBox.add_child(prevBtn);
+
+        // Play/Pause Button
+        const playBtn = new St.Button({
+            style_class: 'wave-media-play-circle-btn',
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._mediaMenuPlayIcon = new St.Icon({
+            icon_name: isPlaying ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic',
+            icon_size: 20,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        playBtn.set_child(this._mediaMenuPlayIcon);
+        playBtn.connect('clicked', () => {
+            try {
+                player.playPause();
+                const nowPlaying = player.status === 'Playing';
+                this._mediaMenuPlayIcon.icon_name = nowPlaying
+                    ? 'media-playback-start-symbolic'
+                    : 'media-playback-pause-symbolic';
+            } catch (e) {}
+        });
+        controlsBox.add_child(playBtn);
+
+        // Next Button
+        const nextBtn = new St.Button({
+            style_class: 'wave-media-btn',
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const nextIcon = new St.Icon({
+            icon_name: 'media-skip-forward-symbolic',
+            icon_size: 16,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        nextBtn.set_child(nextIcon);
+        nextBtn.reactive = !!player.canGoNext;
+        nextBtn.opacity = player.canGoNext ? 255 : 100;
+        nextBtn.connect('clicked', () => {
+            try { player.next(); } catch (e) {}
+        });
+        controlsBox.add_child(nextBtn);
+
+        controlsItem.add_child(controlsBox);
+        menu.addMenuItem(controlsItem);
+
+        // 5. Multi-Player Switcher (if > 1 player)
+        if (this._mprisSource && this._mprisSource.players && this._mprisSource.players.length > 1) {
+            menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            const switcherItem = new PopupMenu.PopupBaseMenuItem({
+                reactive: false,
+                can_focus: false,
+            });
+            const switcherBox = new St.BoxLayout({
+                x_expand: true,
+                style: 'spacing: 6px; padding: 2px 4px;',
+            });
+            const switcherLabel = new St.Label({
+                text: _('Cambiar a:'),
+                style: 'font-size: 11px; opacity: 0.6;',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            switcherBox.add_child(switcherLabel);
+
+            for (const p of this._mprisSource.players) {
+                if (p === player) continue;
+                const pName = p.source?.title || p.app?.get_name() || _('Otro');
+                const pBtn = new St.Button({
+                    style_class: 'wave-wifi-connect-btn',
+                    label: pName,
+                    can_focus: true,
+                });
+                pBtn.connect('clicked', () => {
+                    this._activePlayer = p;
+                    this._updateMediaWidget();
+                    this._showMediaMenu();
+                });
+                switcherBox.add_child(pBtn);
+            }
+            switcherItem.add_child(switcherBox);
+            menu.addMenuItem(switcherItem);
+        }
+
+        // Register menu into uiGroup for lag-free rendering
+        this._registerMenu(menu);
+
+        // Initial position sync
+        this._updateMenuPosition(player);
+
+        // Start live ticker while menu is open
+        this._mediaProgressTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            if (!this._mediaMenu || !this._mediaMenu.isOpen) {
+                this._mediaProgressTimer = null;
+                return GLib.SOURCE_REMOVE;
+            }
+            if (!this._isDraggingMediaSlider && this._activePlayer && this._activePlayer.status === 'Playing') {
+                this._updateMenuPosition(this._activePlayer);
+            }
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    _updateMenuPosition(player) {
+        if (!player || !this._mediaCurrentTimeLabel || !this._mediaSlider) return;
+        this._getPlayerPosition(player, (posSeconds) => {
+            if (!this._mediaCurrentTimeLabel || !this._mediaSlider || this._isDraggingMediaSlider) return;
+            this._mediaCurrentTimeLabel.text = this._formatTime(posSeconds);
+            if (this._mediaTotalLength > 0) {
+                const fraction = Math.max(0, Math.min(1.0, posSeconds / this._mediaTotalLength));
+                this._mediaSlider.value = fraction;
+            }
+        });
+    }
+
+    _syncMediaMenuContent() {
+        const player = this._activePlayer;
+        if (!player || !this._mediaMenu || !this._mediaMenu.isOpen) return;
+
+        this._mediaTotalLength = this._getTrackLength(player);
+        if (this._mediaTotalTimeLabel) {
+            this._mediaTotalTimeLabel.text = this._formatTime(this._mediaTotalLength);
+        }
+        if (this._mediaMenuTitleLabel) {
+            this._mediaMenuTitleLabel.text = player.trackTitle || _('Sin título');
+        }
+        if (this._mediaMenuArtistLabel) {
+            this._mediaMenuArtistLabel.text = player.trackArtists?.join(', ') || _('Artista desconocido');
+        }
+        if (this._mediaMenuPlayIcon) {
+            this._mediaMenuPlayIcon.icon_name = (player.status === 'Playing')
+                ? 'media-playback-pause-symbolic'
+                : 'media-playback-start-symbolic';
+        }
+        this._loadCoverArtAsync(player.trackCoverUrl, (gicon) => {
+            if (this._mediaMenuCoverIcon) {
+                if (gicon) {
+                    this._mediaMenuCoverIcon.gicon = gicon;
+                } else {
+                    this._mediaMenuCoverIcon.icon_name = 'audio-x-generic-symbolic';
+                }
+            }
+        });
+        this._updateMenuPosition(player);
+    }
+
     _showClockMenu() {
         this._closeAllMenus();
 
@@ -4690,6 +5477,15 @@ export default class WaveTopBarExtension extends Extension {
             this._notificationsMenu.destroy();
             this._notificationsMenu = null;
         }
+        if (this._mediaMenu) {
+            this._mediaMenu.close();
+            this._mediaMenu.destroy();
+            this._mediaMenu = null;
+        }
+        if (this._mediaProgressTimer) {
+            GLib.source_remove(this._mediaProgressTimer);
+            this._mediaProgressTimer = null;
+        }
         if (this._volumeMenu) {
             this._volumeMenu.close();
             this._volumeMenu.destroy();
@@ -5215,6 +6011,16 @@ export default class WaveTopBarExtension extends Extension {
         this._notificationsMenu = null;
         this._notificationsListBox = null;
         this._notificationsClearAllBtn = null;
+
+        // Teardown MPRIS media control
+        this._teardownMediaControl();
+        this._mediaBox = null;
+        this._mediaTitleBtn = null;
+        this._mediaLabel = null;
+        this._mediaIcon = null;
+        this._mediaPlayPauseBtn = null;
+        this._mediaPlayPauseIcon = null;
+        this._mediaMenu = null;
 
         this._upowerProxy = null;
         this._powerProfilesProxy = null;

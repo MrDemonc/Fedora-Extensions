@@ -731,6 +731,7 @@
 }
 
 .wave-volume-menu.theme-light .slider,
+.wave-media-menu.theme-light .slider,
 .wave-popup-menu.theme-light .slider,
 .wave-popup-menu-content.theme-light .slider {
     color: #1c1c1e !important;
@@ -741,6 +742,7 @@
 }
 
 .wave-volume-menu.theme-light .slider:hover,
+.wave-media-menu.theme-light .slider:hover,
 .wave-popup-menu.theme-light .slider:hover,
 .wave-popup-menu-content.theme-light .slider:hover {
     color: #000000 !important;
@@ -953,6 +955,7 @@
 }
 
 .wave-volume-menu.theme-dark .slider,
+.wave-media-menu.theme-dark .slider,
 .wave-popup-menu.theme-dark .slider,
 .wave-popup-menu-content.theme-dark .slider {
     color: #ffffff !important;
@@ -963,6 +966,7 @@
 }
 
 .wave-volume-menu.theme-dark .slider:hover,
+.wave-media-menu.theme-dark .slider:hover,
 .wave-popup-menu.theme-dark .slider:hover,
 .wave-popup-menu-content.theme-dark .slider:hover {
     color: #ffffff !important;
@@ -1207,4 +1211,163 @@
 
 .wave-notifications-menu.theme-dark StIcon {
     color: #ffffff !important;
+}
+
+/* --- MEDIA PLAYER CONTROLS (MPRIS2) --- */
+
+/* TopBar Pill in Center */
+.wave-topbar-media-pill {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 0 4px;
+    margin: 2px 0;
+    spacing: 2px;
+    transition: all 150ms ease;
+}
+
+.theme-light .wave-topbar-media-pill {
+    background-color: rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.wave-topbar-media-title-btn {
+    padding: 0 6px !important;
+    border-radius: 8px !important;
+}
+
+.wave-topbar-media-title-btn:hover {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.theme-light .wave-topbar-media-title-btn:hover {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.wave-topbar-media-label {
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+.wave-topbar-media-play-btn {
+    padding: 0 5px !important;
+    border-radius: 8px !important;
+}
+
+.wave-topbar-media-play-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.theme-light .wave-topbar-media-play-btn:hover {
+    background-color: rgba(0, 0, 0, 0.10) !important;
+}
+
+/* Media Popup Menu */
+.wave-media-menu {
+    padding: 6px;
+}
+
+.wave-media-card-item {
+    border-radius: 10px;
+    padding: 8px !important;
+    margin: 2px 0 !important;
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.wave-media-card-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-light .wave-media-card-item {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.theme-light .wave-media-card-item:hover {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.wave-media-cover-bin {
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.theme-light .wave-media-cover-bin {
+    background-color: rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.wave-media-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.theme-light .wave-media-title {
+    color: #1a1a1c !important;
+}
+
+.wave-media-artist {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.theme-light .wave-media-artist {
+    color: rgba(0, 0, 0, 0.65) !important;
+}
+
+.wave-media-time-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.theme-light .wave-media-time-label {
+    color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Playback Control Buttons */
+.wave-media-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transition: all 120ms ease;
+}
+
+.wave-media-btn:hover {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.theme-light .wave-media-btn {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.theme-light .wave-media-btn:hover {
+    background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.wave-media-play-circle-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px !important;
+    background-color: #3584e4 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(53, 132, 228, 0.4);
+    transition: all 120ms ease;
+}
+
+.wave-media-play-circle-btn:hover {
+    background-color: #1c71d8 !important;
+    box-shadow: 0 4px 12px rgba(53, 132, 228, 0.5);
+}
+
+.wave-media-play-circle-btn:active {
+    background-color: #1a5fb4 !important;
+}
+
+.wave-media-slider {
+    margin: 4px 0;
 }
