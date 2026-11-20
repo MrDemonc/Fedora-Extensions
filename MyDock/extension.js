@@ -44,6 +44,29 @@ function getAppIcon(app, size = 40) {
         // Fallback
     }
 
+    // Advanced fallback: try finding desktop app info from windows or WM_CLASS
+    try {
+        const wins = app?.get_windows?.() || [];
+        for (const w of wins) {
+            const wmClass = w.get_wm_class?.();
+            if (wmClass) {
+                const searchResults = Gio.DesktopAppInfo.search(wmClass);
+                if (searchResults && searchResults.length > 0 && searchResults[0].length > 0) {
+                    const foundApp = Shell.AppSystem.get_default().lookup_app(searchResults[0][0]);
+                    if (foundApp) {
+                        const icon = foundApp.get_icon();
+                        if (icon) {
+                            return new St.Icon({
+                                gicon: icon,
+                                icon_size: size,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {}
+
     return new St.Icon({
         icon_name: 'application-x-executable',
         icon_size: size,
@@ -64,11 +87,75 @@ function getAppFromSource(source) {
     return null;
 }
 
+function getWindowsForApp(app, item) {
+    if (!app)
+        return [];
+
+    let windows = [];
+    try {
+        windows = app.get_windows() || [];
+    } catch (e) {}
+
+    if (windows.length > 0)
+        return windows;
+
+    // Advanced fallback for Snap, Flatpak, and mismatched WM_CLASS (e.g. Spotify, Discord, etc.)
+    const appId = (app.get_id?.() || '').toLowerCase();
+    const appInfo = app.app_info || (typeof app.get_app_info === 'function' ? app.get_app_info() : null);
+    const startupWm = (appInfo?.get_startup_wm_class?.() || '').toLowerCase();
+    const baseId = appId
+        .replace(/^([a-z0-9_-]+)_[a-z0-9_-]+\.desktop$/, '$1.desktop')
+        .replace(/\.desktop$/, '');
+
+    // 1. Check if any running app in AppSystem matches this app/item
+    try {
+        const running = Shell.AppSystem.get_default().get_running();
+        for (const rApp of running) {
+            if (rApp === app) continue;
+            const rId = (rApp.get_id?.() || '').toLowerCase();
+            const rBaseId = rId
+                .replace(/^([a-z0-9_-]+)_[a-z0-9_-]+\.desktop$/, '$1.desktop')
+                .replace(/\.desktop$/, '');
+            if (baseId && rBaseId && (baseId === rBaseId || appId.includes(rBaseId) || rId.includes(baseId))) {
+                const rWins = rApp.get_windows();
+                if (rWins && rWins.length > 0)
+                    return rWins;
+            }
+        }
+    } catch (e) {}
+
+    // 2. Direct inspection of all open windows on display
+    try {
+        const allWins = global.display.get_tab_list(0, null);
+        const matched = allWins.filter(w => {
+            if (!w || w.is_override_redirect?.())
+                return false;
+            const wmClass = (w.get_wm_class?.() || '').toLowerCase();
+            const wmInst = (w.get_wm_class_instance?.() || '').toLowerCase();
+            const sandboxed = (w.get_sandboxed_app_id?.() || '').toLowerCase();
+
+            if (startupWm && (wmClass === startupWm || wmInst === startupWm))
+                return true;
+            if (baseId && (wmClass === baseId || wmInst === baseId))
+                return true;
+            if (wmClass && (appId.includes(wmClass) || (baseId && baseId.includes(wmClass))))
+                return true;
+            if (sandboxed && (appId.includes(sandboxed) || (baseId && baseId.includes(sandboxed))))
+                return true;
+            return false;
+        });
+        if (matched.length > 0)
+            return matched;
+    } catch (e) {}
+
+    return [];
+}
+
 function updateWindowGeometryForApp(app, item) {
     if (!app || !item)
         return;
 
-    const windows = app.get_windows();
+    const windows = getWindowsForApp(app, item);
     if (windows.length === 0)
         return;
 
@@ -98,7 +185,7 @@ function handleAppClick(app, item) {
     if (!app)
         return;
 
-    const windows = app.get_windows();
+    const windows = getWindowsForApp(app, item);
     if (windows.length === 0) {
         // App is not running: launch it
         app.activate();
@@ -961,10 +1048,70 @@ export default class MacWaveDockExtension extends Extension {
         // 3. Running Apps not in favorites (if enabled)
         if (this._settings.get_boolean('show-running')) {
             const running = appSystem.get_running();
-            const unpinnedRunning = running.filter(app => {
-                const id = app.get_id();
+
+            const doesAppMatchAnyFavorite = (app) => {
+                if (!app)
+                    return false;
+                const id = app.get_id?.();
+                if (id && favoritesManager.isFavorite(id))
+                    return true;
+
+                const appId = (id || '').toLowerCase();
+                const baseId = appId
+                    .replace(/^([a-z0-9_-]+)_[a-z0-9_-]+\.desktop$/, '$1.desktop')
+                    .replace(/\.desktop$/, '');
                 const appInfo = app.app_info || (typeof app.get_app_info === 'function' ? app.get_app_info() : null);
-                return id && !favoritesManager.isFavorite(id) && (!appInfo || appInfo.should_show());
+                const startupWm = (appInfo?.get_startup_wm_class?.() || '').toLowerCase();
+                const appWins = app.get_windows?.() || [];
+
+                for (const fav of favoriteApps) {
+                    if (!fav) continue;
+                    const fId = (fav.get_id?.() || '').toLowerCase();
+                    const fBaseId = fId
+                        .replace(/^([a-z0-9_-]+)_[a-z0-9_-]+\.desktop$/, '$1.desktop')
+                        .replace(/\.desktop$/, '');
+                    const fInfo = fav.app_info || (typeof fav.get_app_info === 'function' ? fav.get_app_info() : null);
+                    const fStartupWm = (fInfo?.get_startup_wm_class?.() || '').toLowerCase();
+
+                    // 1. Base ID / Snap prefix match (e.g. spotify_spotify vs spotify)
+                    if (baseId && fBaseId && (baseId === fBaseId || fId.includes(baseId) || appId.includes(fBaseId)))
+                        return true;
+
+                    // 2. Name match if both exist
+                    const aName = (app.get_name?.() || '').toLowerCase();
+                    const fName = (fav.get_name?.() || '').toLowerCase();
+                    if (aName && fName && aName === fName && aName.length > 2)
+                        return true;
+
+                    // 3. Startup WM Class match
+                    if (startupWm && (fId.includes(startupWm) || fBaseId === startupWm || fStartupWm === startupWm))
+                        return true;
+                    if (fStartupWm && (appId.includes(fStartupWm) || baseId === fStartupWm))
+                        return true;
+
+                    // 4. Windows of running app matching favorite ID, baseId, or startupWm
+                    for (const win of appWins) {
+                        const wmClass = (win.get_wm_class?.() || '').toLowerCase();
+                        const wmInst = (win.get_wm_class_instance?.() || '').toLowerCase();
+                        const sandboxed = (win.get_sandboxed_app_id?.() || '').toLowerCase();
+                        if (wmClass && (fId.includes(wmClass) || fBaseId === wmClass || (fStartupWm && fStartupWm === wmClass)))
+                            return true;
+                        if (wmInst && (fId.includes(wmInst) || fBaseId === wmInst || (fStartupWm && fStartupWm === wmInst)))
+                            return true;
+                        if (sandboxed && (fId.includes(sandboxed) || fBaseId === sandboxed))
+                            return true;
+                    }
+                }
+
+                return false;
+            };
+
+            const unpinnedRunning = running.filter(app => {
+                const appInfo = app.app_info || (typeof app.get_app_info === 'function' ? app.get_app_info() : null);
+                const hasWins = (app.get_windows?.()?.length || 0) > 0;
+                if (!appInfo && !hasWins)
+                    return false;
+                return !doesAppMatchAnyFavorite(app) && (!appInfo || appInfo.should_show());
             });
 
             if (unpinnedRunning.length > 0 && (favoriteApps.length > 0 || this._items.length > 0)) {
@@ -1410,7 +1557,7 @@ export default class MacWaveDockExtension extends Extension {
             if (!item._dot || !item._app)
                 continue;
 
-            const windows = item._app.get_windows();
+            const windows = getWindowsForApp(item._app, item);
             if (windows.length > 0) {
                 const isFocused = windows.some(w => w === focusWindow);
                 if (isLightMode) {

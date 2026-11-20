@@ -394,7 +394,7 @@ export default class WaveTopBarExtension extends Extension {
 
         // Media Player TopBar Pill (Centered, visible when media is active)
         this._mediaBox = new St.BoxLayout({
-            style_class: 'wave-topbar-media-pill',
+            style_class: 'wave-topbar-media-box',
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
             reactive: true,
@@ -411,7 +411,7 @@ export default class WaveTopBarExtension extends Extension {
 
         const titleBtnBox = new St.BoxLayout({
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 5px;',
+            style: 'spacing: 4px;',
         });
 
         this._mediaIcon = new St.Icon({
@@ -3850,6 +3850,20 @@ export default class WaveTopBarExtension extends Extension {
         this._mediaTotalLength = 0;
 
         try {
+            const playSvg = Gio.File.new_for_path(
+                GLib.build_filenamev([this.path, 'assets', 'play-modern-symbolic.svg'])
+            );
+            const pauseSvg = Gio.File.new_for_path(
+                GLib.build_filenamev([this.path, 'assets', 'pause-modern-symbolic.svg'])
+            );
+            this._playModernGIcon = new Gio.FileIcon({ file: playSvg });
+            this._pauseModernGIcon = new Gio.FileIcon({ file: pauseSvg });
+        } catch (e) {
+            this._playModernGIcon = null;
+            this._pauseModernGIcon = null;
+        }
+
+        try {
             this._mprisSource = new Mpris.MprisSource();
 
             const onPlayerAdded = (player) => {
@@ -4008,11 +4022,28 @@ export default class WaveTopBarExtension extends Extension {
         this._mediaLabel.text = displayText.length > 36 ? displayText.slice(0, 35) + '…' : displayText;
 
         const isPlaying = player.status === 'Playing';
-        this._mediaPlayPauseIcon.icon_name = isPlaying
-            ? 'media-playback-pause-symbolic'
-            : 'media-playback-start-symbolic';
+        this._updatePlayPauseIconActor(this._mediaPlayPauseIcon, isPlaying);
 
         this._mediaBox.visible = true;
+    }
+
+    _updatePlayPauseIconActor(iconActor, isPlaying) {
+        if (!iconActor) return;
+        if (isPlaying) {
+            if (this._pauseModernGIcon) {
+                iconActor.gicon = this._pauseModernGIcon;
+            } else {
+                iconActor.icon_name = 'media-playback-pause-symbolic';
+            }
+            iconActor.fallback_icon_name = 'media-playback-pause-symbolic';
+        } else {
+            if (this._playModernGIcon) {
+                iconActor.gicon = this._playModernGIcon;
+            } else {
+                iconActor.icon_name = 'media-playback-start-symbolic';
+            }
+            iconActor.fallback_icon_name = 'media-playback-start-symbolic';
+        }
     }
 
     _toggleMediaPlayPause() {
@@ -4020,9 +4051,7 @@ export default class WaveTopBarExtension extends Extension {
         try {
             this._activePlayer.playPause();
             const isPlaying = this._activePlayer.status === 'Playing';
-            this._mediaPlayPauseIcon.icon_name = isPlaying
-                ? 'media-playback-start-symbolic'
-                : 'media-playback-pause-symbolic';
+            this._updatePlayPauseIconActor(this._mediaPlayPauseIcon, !isPlaying);
         } catch (e) {
             console.warn('[WaveTopBar] Error toggling media play/pause:', e);
         }
@@ -4183,7 +4212,7 @@ export default class WaveTopBarExtension extends Extension {
         this._mediaMenu = menu;
         menu.actor.add_style_class_name('wave-wifi-menu');
         menu.actor.add_style_class_name('wave-media-menu');
-        menu.actor.width = 330;
+        menu.actor.width = 270;
 
         menu.connect('destroy', () => {
             if (this._mediaProgressTimer) {
@@ -4211,14 +4240,14 @@ export default class WaveTopBarExtension extends Extension {
         const headerBox = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 6px;',
+            style: 'spacing: 5px;',
         });
 
         let appIcon = null;
         if (player.source?.icon) {
-            appIcon = new St.Icon({ gicon: player.source.icon, icon_size: 14 });
+            appIcon = new St.Icon({ gicon: player.source.icon, icon_size: 13 });
         } else {
-            appIcon = new St.Icon({ icon_name: 'audio-x-generic-symbolic', icon_size: 14 });
+            appIcon = new St.Icon({ icon_name: 'audio-x-generic-symbolic', icon_size: 13 });
         }
         headerBox.add_child(appIcon);
 
@@ -4234,7 +4263,7 @@ export default class WaveTopBarExtension extends Extension {
         const isPlaying = player.status === 'Playing';
         const statusBadge = new St.Label({
             text: isPlaying ? _('Reproduciendo') : _('En pausa'),
-            style: 'font-size: 10px; font-weight: 600; opacity: 0.7; padding: 2px 6px; border-radius: 6px; background-color: rgba(255,255,255,0.08);',
+            style: 'font-size: 9px; font-weight: 600; opacity: 0.7; padding: 1px 5px; border-radius: 5px; background-color: rgba(255,255,255,0.08);',
             y_align: Clutter.ActorAlign.CENTER,
         });
         headerBox.add_child(statusBadge);
@@ -4251,13 +4280,13 @@ export default class WaveTopBarExtension extends Extension {
         const cardBox = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 12px; padding: 4px;',
+            style: 'spacing: 8px; padding: 2px;',
         });
 
         const coverBin = new St.Bin({
             style_class: 'wave-media-cover-bin',
-            width: 60,
-            height: 60,
+            width: 44,
+            height: 44,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -4265,7 +4294,7 @@ export default class WaveTopBarExtension extends Extension {
         this._mediaMenuCoverIcon = new St.Icon({
             icon_name: 'audio-x-generic-symbolic',
             fallback_icon_name: 'audio-x-generic-symbolic',
-            icon_size: 52,
+            icon_size: 34,
             style_class: 'wave-media-cover-icon',
         });
         coverBin.set_child(this._mediaMenuCoverIcon);
@@ -4317,7 +4346,7 @@ export default class WaveTopBarExtension extends Extension {
         const progressBox = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
-            style: 'spacing: 2px; padding: 4px 6px;',
+            style: 'spacing: 1px; padding: 2px 4px;',
         });
 
         this._mediaTotalLength = this._getTrackLength(player);
@@ -4376,7 +4405,7 @@ export default class WaveTopBarExtension extends Extension {
             x_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 20px; padding: 8px 0;',
+            style: 'spacing: 12px; padding: 2px 0;',
         });
 
         // Previous Button
@@ -4387,7 +4416,7 @@ export default class WaveTopBarExtension extends Extension {
         });
         const prevIcon = new St.Icon({
             icon_name: 'media-skip-backward-symbolic',
-            icon_size: 16,
+            icon_size: 13,
             y_align: Clutter.ActorAlign.CENTER,
         });
         prevBtn.set_child(prevIcon);
@@ -4405,8 +4434,10 @@ export default class WaveTopBarExtension extends Extension {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._mediaMenuPlayIcon = new St.Icon({
+            gicon: isPlaying ? this._pauseModernGIcon : this._playModernGIcon,
             icon_name: isPlaying ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic',
-            icon_size: 20,
+            fallback_icon_name: isPlaying ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic',
+            icon_size: 15,
             y_align: Clutter.ActorAlign.CENTER,
         });
         playBtn.set_child(this._mediaMenuPlayIcon);
@@ -4414,9 +4445,7 @@ export default class WaveTopBarExtension extends Extension {
             try {
                 player.playPause();
                 const nowPlaying = player.status === 'Playing';
-                this._mediaMenuPlayIcon.icon_name = nowPlaying
-                    ? 'media-playback-start-symbolic'
-                    : 'media-playback-pause-symbolic';
+                this._updatePlayPauseIconActor(this._mediaMenuPlayIcon, !nowPlaying);
             } catch (e) {}
         });
         controlsBox.add_child(playBtn);
@@ -4429,7 +4458,7 @@ export default class WaveTopBarExtension extends Extension {
         });
         const nextIcon = new St.Icon({
             icon_name: 'media-skip-forward-symbolic',
-            icon_size: 16,
+            icon_size: 13,
             y_align: Clutter.ActorAlign.CENTER,
         });
         nextBtn.set_child(nextIcon);
@@ -4526,9 +4555,7 @@ export default class WaveTopBarExtension extends Extension {
             this._mediaMenuArtistLabel.text = player.trackArtists?.join(', ') || _('Artista desconocido');
         }
         if (this._mediaMenuPlayIcon) {
-            this._mediaMenuPlayIcon.icon_name = (player.status === 'Playing')
-                ? 'media-playback-pause-symbolic'
-                : 'media-playback-start-symbolic';
+            this._updatePlayPauseIconActor(this._mediaMenuPlayIcon, player.status === 'Playing');
         }
         this._loadCoverArtAsync(player.trackCoverUrl, (gicon) => {
             if (this._mediaMenuCoverIcon) {
