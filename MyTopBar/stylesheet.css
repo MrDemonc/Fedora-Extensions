@@ -193,7 +193,7 @@
     background-color: rgba(28, 28, 34, 0.96);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.40);
     padding: 10px;
     width: 580px;
 }
@@ -536,7 +536,7 @@
     color: #1c1c1e !important;
     border: 1px solid rgba(0, 0, 0, 0.14) !important;
     border-radius: 14px !important;
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10) !important;
 }
 
 .wave-popup-menu.theme-light StLabel,
@@ -760,7 +760,7 @@
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 14px !important;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28) !important;
 }
 
 .wave-popup-menu.theme-dark StLabel,
@@ -1027,7 +1027,7 @@
     background: #f6f6f8 !important;
     color: #1c1c1e !important;
     border: 1px solid rgba(0, 0, 0, 0.14) !important;
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.16) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10) !important;
 }
 
 #notification-container.theme-light .notification-banner .message-header,
@@ -1073,7 +1073,7 @@
     background: #242428 !important;
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28) !important;
 }
 
 #notification-container.theme-dark .notification-banner .message-header,

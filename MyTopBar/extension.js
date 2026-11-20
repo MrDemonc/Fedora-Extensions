@@ -2852,7 +2852,7 @@ export default class WaveTopBarExtension extends Extension {
             if (menu.box) {
                 menu.box.add_style_class_name('theme-light');
                 menu.box.remove_style_class_name('theme-dark');
-                menu.box.style = 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.20) !important;';
+                menu.box.style = 'background-color: #f6f6f8 !important; color: #1c1c1e !important; border: 1px solid rgba(0, 0, 0, 0.14) !important; border-radius: 14px !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10) !important;';
             }
         } else {
             menu.actor.add_style_class_name('theme-dark');
@@ -2860,7 +2860,7 @@ export default class WaveTopBarExtension extends Extension {
             if (menu.box) {
                 menu.box.add_style_class_name('theme-dark');
                 menu.box.remove_style_class_name('theme-light');
-                menu.box.style = 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55) !important;';
+                menu.box.style = 'background-color: #242428 !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.12) !important; border-radius: 14px !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28) !important;';
             }
         }
         this._menuManager.addMenu(menu);
@@ -4209,7 +4209,7 @@ export default class WaveTopBarExtension extends Extension {
         const player = this._activePlayer;
         if (!player) return;
 
-        const menu = new PopupMenu.PopupMenu(this._mediaTitleBtn, 0.0, St.Side.TOP);
+        const menu = new PopupMenu.PopupMenu(this._mediaBox, 0.5, St.Side.TOP);
         this._mediaMenu = menu;
         menu.actor.add_style_class_name('wave-wifi-menu');
         menu.actor.add_style_class_name('wave-media-menu');
