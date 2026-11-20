@@ -3076,6 +3076,77 @@ export default class WaveTopBarExtension extends Extension {
         }
     }
 
+    _activateNotification(source, notif) {
+        this._closeAllMenus();
+        try {
+            if (notif && typeof notif.activate === 'function') {
+                notif.activate();
+            }
+        } catch (e) {
+            console.warn('[WaveTopBar] Error calling notif.activate():', e);
+        }
+
+        this._activateNotificationApp(source, notif);
+    }
+
+    _activateNotificationApp(source, notif) {
+        if (!source) return;
+
+        try {
+            let app = source.app || source._app;
+
+            if (!app && source.title) {
+                const appSys = Shell.AppSystem.get_default();
+                const running = appSys.get_running();
+                const sTitle = source.title.toLowerCase();
+                for (const r of running) {
+                    const rName = (r.get_name() || '').toLowerCase();
+                    const rId = (r.get_id() || '').toLowerCase();
+                    if (rName === sTitle || rId.includes(sTitle) || sTitle.includes(rName)) {
+                        app = r;
+                        break;
+                    }
+                }
+                if (!app) {
+                    const installed = appSys.get_installed();
+                    for (const ins of installed) {
+                        const insName = (ins.get_name() || '').toLowerCase();
+                        if (insName === sTitle || ins.get_id().toLowerCase().includes(sTitle)) {
+                            app = ins;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (app) {
+                const windows = app.get_windows ? app.get_windows() : [];
+                if (windows && windows.length > 0) {
+                    Main.activateWindow(windows[0]);
+                } else {
+                    app.activate();
+                }
+
+                // Brief delayed re-check for Wayland mapping
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
+                    try {
+                        const wins = app.get_windows ? app.get_windows() : [];
+                        if (wins && wins.length > 0) {
+                            Main.activateWindow(wins[0]);
+                        }
+                    } catch (err) {}
+                    return GLib.SOURCE_REMOVE;
+                });
+            } else if (typeof source.open === 'function') {
+                source.open();
+            } else if (typeof source.openApp === 'function') {
+                source.openApp();
+            }
+        } catch (e) {
+            console.warn('[WaveTopBar] Error bringing notification app to front:', e);
+        }
+    }
+
     _toggleNotificationsMenu() {
         if (this._notificationsMenu && this._notificationsMenu.isOpen) {
             this._notificationsMenu.close();
@@ -3347,12 +3418,7 @@ export default class WaveTopBarExtension extends Extension {
 
             contentBtn.set_child(contentBox);
             contentBtn.connect('clicked', () => {
-                this._closeAllMenus();
-                try {
-                    notif.activate();
-                } catch (e) {
-                    console.warn('[WaveTopBar] Error activating notification:', e);
-                }
+                this._activateNotification(source, notif);
             });
             card.add_child(contentBtn);
 
@@ -3374,6 +3440,7 @@ export default class WaveTopBarExtension extends Extension {
                         } catch (e) {
                             console.warn('[WaveTopBar] Error activating action:', e);
                         }
+                        this._activateNotificationApp(source, notif);
                     });
                     actionsBox.add_child(actionBtn);
                 }
