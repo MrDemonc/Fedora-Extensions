@@ -568,7 +568,6 @@ export default class WaveTopBarExtension extends Extension {
             y_align: Clutter.ActorAlign.FILL,
         });
         const notifBox = new St.BoxLayout({
-            vertical: false,
             y_align: Clutter.ActorAlign.CENTER,
             style: 'spacing: 2px;',
         });
@@ -3109,7 +3108,6 @@ export default class WaveTopBarExtension extends Extension {
             style_class: 'wave-wifi-header-item',
         });
         const headerBox = new St.BoxLayout({
-            vertical: false,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -3157,7 +3155,7 @@ export default class WaveTopBarExtension extends Extension {
             style: 'max-height: 380px;',
         });
         this._notificationsListBox = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_expand: true,
         });
@@ -3199,7 +3197,7 @@ export default class WaveTopBarExtension extends Extension {
 
         if (notifs.length === 0) {
             const placeholder = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 y_align: Clutter.ActorAlign.CENTER,
                 x_align: Clutter.ActorAlign.CENTER,
@@ -3237,14 +3235,13 @@ export default class WaveTopBarExtension extends Extension {
             const { source, notif } = item;
 
             const card = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 style_class: 'wave-notification-card',
             });
 
             // Top row: App icon, app title, time, close button
             const topRow = new St.BoxLayout({
-                vertical: false,
                 x_expand: true,
                 y_align: Clutter.ActorAlign.CENTER,
                 style: 'spacing: 4px;',
@@ -3320,7 +3317,7 @@ export default class WaveTopBarExtension extends Extension {
                 style: 'background-color: transparent !important; background: transparent !important; border: none !important; box-shadow: none !important; text-align: left; padding: 2px 0;',
             });
             const contentBox = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 style: 'spacing: 2px;',
             });
@@ -3362,7 +3359,6 @@ export default class WaveTopBarExtension extends Extension {
             // Action buttons (if any)
             if (notif.actions && notif.actions.length > 0) {
                 const actionsBox = new St.BoxLayout({
-                    vertical: false,
                     style: 'spacing: 6px; margin-top: 6px;',
                 });
                 for (const action of notif.actions) {
