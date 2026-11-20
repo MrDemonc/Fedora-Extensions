@@ -428,6 +428,7 @@ export default class WaveTopBarExtension extends Extension {
             style_class: 'wave-topbar-media-label',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._mediaLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         titleBtnBox.add_child(this._mediaLabel);
         this._mediaTitleBtn.set_child(titleBtnBox);
 
@@ -454,8 +455,6 @@ export default class WaveTopBarExtension extends Extension {
         this._mediaPlayPauseBtn.connect('clicked', () => this._toggleMediaPlayPause());
         this._mediaPlayPauseBtn.connect('button-press-event', handleRightClick);
         this._mediaBox.add_child(this._mediaPlayPauseBtn);
-
-        this._centerBox.add_child(this._mediaBox);
 
         // Right section (Spotlight, Wi-Fi, Bluetooth, Battery, Control Center, Clock)
         this._rightBox = new St.BoxLayout({
@@ -505,10 +504,12 @@ export default class WaveTopBarExtension extends Extension {
             style_class: 'wave-topbar-app-name',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._activeAppLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         this._activeAppBtn.set_child(this._activeAppLabel);
         this._activeAppBtn.connect('clicked', () => this._showActiveAppMenu());
         this._activeAppBtn.connect('button-press-event', handleRightClick);
         this._leftBox.add_child(this._activeAppBtn);
+        this._leftBox.add_child(this._mediaBox);
 
         // --- RIGHT SECTION ITEMS ---
 
@@ -4208,11 +4209,11 @@ export default class WaveTopBarExtension extends Extension {
         const player = this._activePlayer;
         if (!player) return;
 
-        const menu = new PopupMenu.PopupMenu(this._mediaTitleBtn, 0.5, St.Side.TOP);
+        const menu = new PopupMenu.PopupMenu(this._mediaTitleBtn, 0.0, St.Side.TOP);
         this._mediaMenu = menu;
         menu.actor.add_style_class_name('wave-wifi-menu');
         menu.actor.add_style_class_name('wave-media-menu');
-        menu.actor.width = 270;
+        menu.actor.width = 280;
 
         menu.connect('destroy', () => {
             if (this._mediaProgressTimer) {
@@ -4240,7 +4241,7 @@ export default class WaveTopBarExtension extends Extension {
         const headerBox = new St.BoxLayout({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
-            style: 'spacing: 5px;',
+            style: 'spacing: 6px;',
         });
 
         let appIcon = null;
@@ -4251,11 +4252,18 @@ export default class WaveTopBarExtension extends Extension {
         }
         headerBox.add_child(appIcon);
 
+        let appNameText = player.app?.get_name() || player.source?.title || _('Reproductor');
+        if (player.app && typeof player.app.get_name === 'function' && player.app.get_name()) {
+            appNameText = player.app.get_name();
+        }
+
         const appTitle = new St.Label({
-            text: player.source?.title || player.app?.get_name() || _('Reproductor'),
-            style_class: 'wave-wifi-section-title',
+            text: appNameText,
+            style_class: 'wave-media-app-title',
             y_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
         });
+        appTitle.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         headerBox.add_child(appTitle);
 
         headerBox.add_child(new St.Widget({ x_expand: true }));

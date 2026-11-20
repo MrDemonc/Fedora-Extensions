@@ -123,6 +123,8 @@
     letter-spacing: 0.1px;
     color: inherit;
     text-shadow: none !important;
+    padding-right: 6px;
+    padding-left: 2px;
 }
 
 .wave-topbar-clock-btn {
@@ -1273,11 +1275,26 @@
     border-radius: 12px;
 }
 
+.wave-media-app-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: none !important;
+    text-transform: none !important;
+}
+
+.theme-light .wave-media-app-title {
+    color: rgba(0, 0, 0, 0.80) !important;
+    text-shadow: none !important;
+}
+
 .wave-media-card-item {
     border-radius: 8px;
     padding: 4px !important;
     margin: 1px 0 !important;
     background-color: rgba(255, 255, 255, 0.04);
+    box-shadow: none !important;
+    border: none !important;
 }
 
 .wave-media-card-item:hover {
@@ -1286,6 +1303,8 @@
 
 .theme-light .wave-media-card-item {
     background-color: rgba(0, 0, 0, 0.03);
+    box-shadow: none !important;
+    border: none !important;
 }
 
 .theme-light .wave-media-card-item:hover {
@@ -1295,32 +1314,42 @@
 .wave-media-cover-bin {
     border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.20);
+    box-shadow: none !important;
+    border: none !important;
 }
 
 .theme-light .wave-media-cover-bin {
     background-color: rgba(0, 0, 0, 0.06);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
+    box-shadow: none !important;
+    border: none !important;
 }
 
 .wave-media-title {
     font-size: 12px;
     font-weight: 600;
     color: #ffffff;
+    text-shadow: none !important;
+    box-shadow: none !important;
 }
 
 .theme-light .wave-media-title {
     color: #1a1a1c !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
 }
 
 .wave-media-artist {
     font-size: 11px;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.70);
+    text-shadow: none !important;
+    box-shadow: none !important;
 }
 
 .theme-light .wave-media-artist {
     color: rgba(0, 0, 0, 0.60) !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
 }
 
 .wave-media-time-label {
@@ -1333,44 +1362,65 @@
     color: rgba(0, 0, 0, 0.45) !important;
 }
 
-/* Playback Control Buttons (Compact) */
+/* Playback Control Buttons (Compact & Monochrome / No blue) */
 .wave-media-btn {
     width: 28px;
     height: 28px;
     border-radius: 14px !important;
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
     transition: all 120ms ease;
 }
 
 .wave-media-btn:hover {
-    background-color: rgba(255, 255, 255, 0.18) !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .theme-light .wave-media-btn {
-    background-color: rgba(0, 0, 0, 0.06) !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
 }
 
 .theme-light .wave-media-btn:hover {
-    background-color: rgba(0, 0, 0, 0.12) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 .wave-media-play-circle-btn {
     width: 34px;
     height: 34px;
     border-radius: 17px !important;
-    background-color: #3584e4 !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(53, 132, 228, 0.35);
+    background-color: rgba(255, 255, 255, 0.16) !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    border: none !important;
     transition: all 120ms ease;
 }
 
 .wave-media-play-circle-btn:hover {
-    background-color: #1c71d8 !important;
-    box-shadow: 0 3px 8px rgba(53, 132, 228, 0.45);
+    background-color: rgba(255, 255, 255, 0.26) !important;
+    box-shadow: none !important;
 }
 
 .wave-media-play-circle-btn:active {
-    background-color: #1a5fb4 !important;
+    background-color: rgba(255, 255, 255, 0.36) !important;
+}
+
+.theme-light .wave-media-play-circle-btn {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    color: #1a1a1c !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.theme-light .wave-media-play-circle-btn:hover {
+    background-color: rgba(0, 0, 0, 0.16) !important;
+    box-shadow: none !important;
+}
+
+.theme-light .wave-media-play-circle-btn:active {
+    background-color: rgba(0, 0, 0, 0.24) !important;
 }
 
 .wave-media-slider {
